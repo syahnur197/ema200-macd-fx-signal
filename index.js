@@ -12,6 +12,7 @@ const macd = 'MACD:12,26,close,9';
 const ma = 'MA:1';
 
 const telegramBotToken = process.env.BOT_TOKEN; // Telegram bot
+const cronExpression = process.env.CRON_EXPRESSION
 
 let userIds = [];
 
@@ -32,7 +33,6 @@ bot.onText(/\/start/, (msg, match) => {
 
 const checkSignal = async () => {
     console.log("running....")
-    let message = '';
     for (let i = 0; i < pairs.length; i++) {
         let pair = pairs[i];
 
@@ -75,21 +75,21 @@ const checkSignal = async () => {
         let sellConditionE = signalLine > 0;
 
         if (buyConditionA && buyConditionB && buyConditionC && buyConditionD && buyConditionC && buyConditionE) {
-            message += `${pair} Buy \n`;
+            sendMessage(`${pair} Buy \n`);
         } else if (sellConditionA && sellConditionB && sellConditionC && sellConditionD && sellConditionC && sellConditionE) {
-            message += `${pair} Sell \n`;
-        } else {
-            message += `${pair} No trade \n`;
+            sendMessage(`${pair} Sell \n`);
         }
     }
+}
 
+const sendMessage = async(message) => {
     for (let i = 0; i < userIds.length; i++) {
         await bot.sendMessage(userIds[i], message);
     }
 }
 
 new CronJob(
-	'0 * * * * *',
+	cronExpression,
 	function() {
 		checkSignal()
 	},
