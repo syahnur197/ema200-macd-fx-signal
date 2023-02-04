@@ -173,7 +173,6 @@ new CronJob(
 );
 
 if (process.env.ENVIRONMENT === 'development') {
-    requestSignal();
     main();
 }
 
