@@ -3,9 +3,10 @@ const axios = require("axios");
 const TelegramBot = require('node-telegram-bot-api');
 const CronJob = require('cron').CronJob;
 
+const { scrapeTrend } = require("./trend-scraper");
+
 const endpoint = 'https://api.bitapi.pro/v1/technical/indicator';
 const exchange = 'OANDA';
-const pairs = ['EURUSD', 'GBPUSD', 'AUDUSD', 'USDCHF', 'USDJPY', 'NZDUSD'];
 const interval = '1h';
 const ema = 'EMA:200';
 const macd = 'MACD:12,26,close,9';
@@ -33,14 +34,23 @@ bot.onText(/\/start/, (msg, match) => {
 
 const checkSignal = async () => {
     console.log("running....")
-    for (let i = 0; i < pairs.length; i++) {
-        let pair = pairs[i];
+
+    console.log("fetching pairs...")
+
+    const pairTrends = await scrapeTrend();
+
+    for (let i = 0; i < pairTrends.length; i++) {
+        let pair = pairTrends[i].pair;
 
         let url = `${endpoint}?exchange=${exchange}&symbol=${pair}&interval=${interval}&id=${ema}&id=${macd}&id=${ma}`;
 
-        console.log(url);
+        let response = {}
 
-        const response = (await axios.get(url)).data;
+        try {
+            response = (await axios.get(url)).data;
+        } catch (e) {
+            continue;
+        }
 
         let currentPrice = 0;
         let emaPrice = 0;
@@ -74,10 +84,18 @@ const checkSignal = async () => {
         let sellConditionD = macdLine > 0;
         let sellConditionE = signalLine > 0;
 
+        let message = '';
+        message += `30 min: ${pairTrends[i].thirtyMin} \n`;
+        message += `1 hour: ${pairTrends[i].oneHour} \n`;
+        message += `2 hours: ${pairTrends[i].twoHours} \n`;
+        message += `4 hours: ${pairTrends[i].fourHours} \n`;
+        message += `1 daily: ${pairTrends[i].daily} \n`;
+        message += `1 weekly: ${pairTrends[i].weekly} \n`;
+
         if (buyConditionA && buyConditionB && buyConditionC && buyConditionD && buyConditionC && buyConditionE) {
-            sendMessage(`${pair} Buy \n`);
+            sendMessage(`${pair} Buy \n` + message);
         } else if (sellConditionA && sellConditionB && sellConditionC && sellConditionD && sellConditionC && sellConditionE) {
-            sendMessage(`${pair} Sell \n`);
+            sendMessage(`${pair} Sell \n` + message);
         }
     }
 }
