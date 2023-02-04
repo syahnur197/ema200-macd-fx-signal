@@ -1,120 +1,179 @@
 require('dotenv').config()
-const axios = require("axios");
 const TelegramBot = require('node-telegram-bot-api');
 const CronJob = require('cron').CronJob;
 
-const { scrapeTrend } = require("./trend-scraper");
+const {scrapeTrend} = require("./trend-scraper");
+const {scrapeFxPrice} = require("./fx-price-scraper");
+const {checkSignal, BUY, SELL} = require("./signal-checker");
+const {PrismaClient} = require("@prisma/client");
 
-const endpoint = 'https://api.bitapi.pro/v1/technical/indicator';
-const exchange = 'OANDA';
-const interval = '1h';
-const ema = 'EMA:200';
-const macd = 'MACD:12,26,close,9';
-const ma = 'MA:1';
+const prisma = new PrismaClient()
 
 const telegramBotToken = process.env.BOT_TOKEN; // Telegram bot
 const cronExpression = process.env.CRON_EXPRESSION
 
-let userIds = [];
-
 const bot = new TelegramBot(telegramBotToken, {polling: true});
 
 // Matches "/start"
-bot.onText(/\/start/, (msg, match) => {
-  let fromId = msg.from.id;
-  let name = msg.from.first_name;
+bot.onText(/\/start/, async (msg, match) => {
+    let fromId = msg.from.id;
+    let name = msg.from.first_name;
 
-  userIds.push(fromId);
+    const user = prisma.user.findFirst({
+        where: {telegramId: fromId}
+    });
 
-  console.log(userIds);
+    if (user) {
+        await bot.sendMessage(fromId, `${name}, you already joined the signal group!`);
+        return;
+    }
 
-  // send back the matched "whatever" to the chat
-  bot.sendMessage(fromId, `Welcome ${name}, thank you for registering for the signal`);
+    await prisma.user.upsert({
+        where: {telegramId: fromId},
+        update: {telegramId: fromId},
+        create: {
+            telegramId: fromId,
+        }
+    })
+
+    // send back the matched "whatever" to the chat
+    await bot.sendMessage(fromId, `Welcome ${name}, thank you for joining the signal group`);
 });
 
-const checkSignal = async () => {
-    console.log("running....")
+bot.onText(/\/signal/, async (msg, match) => {
+    let fromId = msg.from.id;
 
-    console.log("fetching pairs...")
+    await bot.sendMessage(fromId, `Fetching signal`);
 
-    const pairTrends = await scrapeTrend();
+    await requestSignal(fromId);
+});
 
-    for (let i = 0; i < pairTrends.length; i++) {
-        let pair = pairTrends[i].pair;
+bot.onText(/\/quit/, async (msg, match) => {
+    let fromId = msg.from.id;
+    let name = msg.from.first_name;
 
-        let url = `${endpoint}?exchange=${exchange}&symbol=${pair}&interval=${interval}&id=${ema}&id=${macd}&id=${ma}`;
+    const user = prisma.user.findFirst({
+        where: {telegramId: fromId}
+    });
 
-        let response = {}
+    if (!user) {
+        await bot.sendMessage(fromId, `${name}, you already quit the signal group!`);
+        return;
+    }
 
-        try {
-            response = (await axios.get(url)).data;
-        } catch (e) {
-            continue;
-        }
+    await prisma.user.delete({
+        where: {telegramId: fromId},
+    })
 
-        let currentPrice = 0;
-        let emaPrice = 0;
-        let histogram = 0;
-        let macdLine = 0;
-        let signalLine = 0;
+    // send back the matched "whatever" to the chat
+    await bot.sendMessage(fromId, `We're sad to see you leave this signal group ${name}, see you in the future!`);
+});
 
-        for (let  j = 0; j < response.length; j++) {
-            if (response[j].id === 'MA') {
-                currentPrice = response[j].data[0];
-            }
-            if (response[j].id === 'EMA') {
-                emaPrice = response[j].data[0];
-            }
-            if (response[j].id === 'MACD') {
-                histogram = response[j].data[0];
-                macdLine = response[j].data[1];
-                signalLine = response[j].data[2];
-            }
-        }
+const formatMessage = (pairIndicatorDatum) => {
+    let message = '';
+    message += `1 hour: ${pairIndicatorDatum.h1_trend === 'uptrend' ? '🟢' : '🔴'} \n`;
+    message += `4 hours: ${pairIndicatorDatum.h4_trend === 'uptrend' ? '🟢' : '🔴'} \n`;
+    message += `1 daily: ${pairIndicatorDatum.d1_trend === 'uptrend' ? '🟢' : '🔴'} \n`;
+    message += `1 weekly: ${pairIndicatorDatum.w1_trend === 'uptrend' ? '🟢' : '🔴'} \n`;
 
-        let buyConditionA = currentPrice > emaPrice;
-        let buyConditionB = histogram > 0;
-        let buyConditionC = macdLine > signalLine;
-        let buyConditionD = macdLine < 0;
-        let buyConditionE = signalLine < 0;
+    if (pairIndicatorDatum.signal === BUY) {
+        message = `${pairIndicatorDatum.pair} Buy \n` + message
+    } else if (pairIndicatorDatum.signal === SELL) {
+        message = `${pairIndicatorDatum.pair} Sell \n` + message
+    } else {
+        message = `${pairIndicatorDatum.pair} No Trade \n` + message
+    }
 
-        let sellConditionA = currentPrice < emaPrice;
-        let sellConditionB = histogram < 0;
-        let sellConditionC = macdLine < signalLine;
-        let sellConditionD = macdLine > 0;
-        let sellConditionE = signalLine > 0;
+    return message
+}
 
-        let message = '';
-        message += `1 hour: ${pairTrends[i].oneHour} \n`;
-        message += `4 hours: ${pairTrends[i].fourHours} \n`;
-        message += `1 daily: ${pairTrends[i].daily} \n`;
-        message += `1 weekly: ${pairTrends[i].weekly} \n`;
-
-        if (process.env.ENVIRONMENT === 'development') {
-            console.log(`${pair} Signal \n` + message);
-            sendMessage(`${pair} Signal \n` + message);
-        }
-
-        if (buyConditionA && buyConditionB && buyConditionC && buyConditionD && buyConditionC && buyConditionE) {
-            sendMessage(`${pair} Buy \n` + message);
-        } else if (sellConditionA && sellConditionB && sellConditionC && sellConditionD && sellConditionC && sellConditionE) {
-            sendMessage(`${pair} Sell \n` + message);
-        }
+const sendMessage = async (users, message) => {
+    for (let i = 0; i < users.length; i++) {
+        await bot.sendMessage(users[i].telegramId, message);
     }
 }
 
-const sendMessage = async(message) => {
-    for (let i = 0; i < userIds.length; i++) {
-        await bot.sendMessage(userIds[i], message);
+const requestSignal = async (telegramId) => {
+    const prices = await prisma.$queryRaw`SELECT * FROM Price WHERE id IN (SELECT MAX(id) FROM Price GROUP BY pair)`;
+
+    for (let i = 0; i < prices.length; i++) {
+        const pairSignal = await checkSignal(prices[i], prices[i]);
+
+        const message = formatMessage(pairSignal)
+
+        await bot.sendMessage(telegramId, message)
+    }
+}
+
+const main = async () => {
+    console.log('fetching trend from trading rush')
+    const pairTrends = await scrapeTrend();
+
+    console.log('fetching all users')
+    const users = await prisma.user.findMany();
+
+    console.log('fetching pair ema and macd data')
+    for (let i = 0; i < pairTrends.length; i++) {
+        const pairIndicatorDatum = await scrapeFxPrice(pairTrends[i])
+
+        if (!pairIndicatorDatum) {
+            continue;
+        }
+
+        await prisma.price.create({
+            data: {
+                pair: pairIndicatorDatum.pair,
+                closed_price: pairIndicatorDatum.closedPrice,
+                ema_price: pairIndicatorDatum.emaPrice,
+                histogram: pairIndicatorDatum.histogram,
+                macd_line: pairIndicatorDatum.macdLine,
+                signal_line: pairIndicatorDatum.signalLine,
+                h1_trend: pairIndicatorDatum.oneHour,
+                h4_trend: pairIndicatorDatum.fourHours,
+                d1_trend: pairIndicatorDatum.daily,
+                w1_trend: pairIndicatorDatum.weekly,
+            }
+        })
+
+        // get the latest two pair data
+        const prices = await prisma.price.findMany({
+            orderBy: [
+                {
+                    created_at: 'desc',
+                },
+            ],
+            take: 2,
+            where: {
+                pair: {
+                    equals: pairTrends[i].pair,
+                }
+            }
+        });
+
+        if (prices.length < 2) {
+            continue;
+        }
+
+        const pairSignal = await checkSignal(prices[0], prices[1]);
+
+        const message = formatMessage(pairSignal)
+
+        await sendMessage(users, message)
     }
 }
 
 new CronJob(
-	cronExpression,
-	function() {
-		checkSignal()
-	},
-	null,
-	true,
-	'Asia/Brunei'
+    cronExpression,
+    async function () {
+        await main()
+    },
+    null,
+    false,
+    'Asia/Brunei'
 );
+
+if (process.env.ENVIRONMENT === 'development') {
+    requestSignal();
+    main();
+}
+

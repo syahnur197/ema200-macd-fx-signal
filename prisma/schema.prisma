@@ -1,0 +1,31 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id         Int @id @default(autoincrement())
+  telegramId Int @unique
+}
+
+model Price {
+  id           Int      @id @default(autoincrement())
+  pair         String
+  closed_price Decimal  @db.Decimal(10, 5)
+  ema_price    Decimal  @db.Decimal(10, 5)
+  histogram    Decimal  @db.Decimal(10, 5)
+  macd_line    Decimal  @db.Decimal(10, 5)
+  signal_line  Decimal  @db.Decimal(10, 5)
+  h1_trend     String
+  h4_trend     String
+  d1_trend     String
+  w1_trend     String
+  created_at   DateTime @default(now())
+}
