@@ -1,9 +1,27 @@
 # MACD Signal Bot
 
-This script will alert you if there is a buy/sell signal in the FX pairs
+This script will alert you via telegram bot if there is a buy/sell signal in the FX pairs returned by Trading Rush Trend Finder.
+
+## Requirements
+- npm
+- node js
+- Telegram bot api token
+
+## Telegram Bot Api Token
+You can get it from Telegram's Botfather
+
+## Installation
+- clone this repo
+- run npm install
+- $ cp .env.example .env
+- fill in the BOT_TOKEN
+- use `0 * * * * *` for the cron expression if you want to be alerted every minute.
+- set ENVIRONMENT to development if you want to check the alert in console, otherwise set to production if you want it to only message you via Telegram.
+- $ node index.js
+- send `/start` to your Telegram bot, and it will alert you for trade signal every minute.
 
 ## Conditions
-These are the conditions
+These are the conditions when the Bot will alert you
 
 ### Buy
 - Price above EMA200
@@ -14,3 +32,6 @@ These are the conditions
 - Price below EMA200
 - MACD Line < Signal Line
 - MACD Line & Signal Line above 0
+
+## Trend Finder
+- The bot will also tell you the market trend based on Trading Rush's Trend Finder.
