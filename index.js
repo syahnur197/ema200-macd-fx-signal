@@ -168,7 +168,7 @@ new CronJob(
         await main()
     },
     null,
-    false,
+    true,
     'Asia/Brunei'
 );
 
