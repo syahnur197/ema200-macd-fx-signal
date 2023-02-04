@@ -85,12 +85,15 @@ const checkSignal = async () => {
         let sellConditionE = signalLine > 0;
 
         let message = '';
-        message += `30 min: ${pairTrends[i].thirtyMin} \n`;
         message += `1 hour: ${pairTrends[i].oneHour} \n`;
-        message += `2 hours: ${pairTrends[i].twoHours} \n`;
         message += `4 hours: ${pairTrends[i].fourHours} \n`;
         message += `1 daily: ${pairTrends[i].daily} \n`;
         message += `1 weekly: ${pairTrends[i].weekly} \n`;
+
+        if (process.env.ENVIRONMENT === 'development') {
+            console.log(`${pair} Signal \n` + message);
+            sendMessage(`${pair} Signal \n` + message);
+        }
 
         if (buyConditionA && buyConditionB && buyConditionC && buyConditionD && buyConditionC && buyConditionE) {
             sendMessage(`${pair} Buy \n` + message);
