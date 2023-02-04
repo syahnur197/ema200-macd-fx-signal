@@ -52,7 +52,7 @@ bot.onText(/\/quit/, async (msg, match) => {
     let fromId = msg.from.id;
     let name = msg.from.first_name;
 
-    const user = prisma.user.findFirst({
+    const user = await prisma.user.findFirst({
         where: {telegramId: fromId}
     });
 
