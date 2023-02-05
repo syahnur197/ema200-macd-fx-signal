@@ -60,7 +60,7 @@ bot.onText(/\/start/, async (msg, match) => {
     let fromId = msg.from.id;
     let name = msg.from.first_name;
 
-    const userCount = prisma.user.count({
+    const userCount = await prisma.user.count({
         where: {telegramId: fromId}
     });
 
