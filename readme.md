@@ -1,6 +1,6 @@
 # MACD Signal Bot
 
-This script will alert you via telegram bot if there is a buy/sell signal in the FX pairs returned by Trading Rush Trend Finder.
+This script will alert you via telegram bot if there is a buy/sell signal in the FX pairs returned by TradingView Scanner.
 
 ## Requirements
 - npm
@@ -34,4 +34,4 @@ These are the conditions when the Bot will alert you
 - MACD Line & Signal Line above 0
 
 ## Trend Finder
-- The bot will also tell you the market trend based on Trading Rush's Trend Finder.
+- The bot also tells you the market trend using EMA 200

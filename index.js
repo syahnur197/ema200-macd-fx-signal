@@ -1,11 +1,52 @@
-require('dotenv').config()
-const TelegramBot = require('node-telegram-bot-api');
-const CronJob = require('cron').CronJob;
+import dotenv from "dotenv";
+import TelegramBot from 'node-telegram-bot-api';
+import {CronJob} from 'cron'
+import {PrismaClient} from "@prisma/client";
+import {scanTradingView} from "./tradingview-scanner.js";
+import dayjs from "dayjs";
+import {formatMessage, isBuySignal, isSellSignal} from "./util.js";
 
-const {scrapeTrend} = require("./trend-scraper");
-const {scrapeFxPrice} = require("./fx-price-scraper");
-const {checkSignal, BUY, SELL} = require("./signal-checker");
-const {PrismaClient} = require("@prisma/client");
+dotenv.config()
+
+const pairs = [
+    'EURUSD',
+    'GBPUSD',
+    'AUDUSD',
+    'NZDUSD',
+    'USDJPY',
+    'USDSGD',
+    'USDCAD',
+    'USDCHF',
+
+    // for future
+    // 'GBPJPY',
+    // 'EURJPY',
+    // 'AUDJPY',
+    // 'GBPAUD',
+    // 'EURUAD',
+    // 'EURGBP',
+    // 'CADJPY',
+    // 'AUDCAD',
+    // 'EURCAD',
+    // 'EURNZD',
+    // 'NZDJPY',
+    // 'GBPNZD',
+    // 'GBPCAD',
+    // 'GBPCHF',
+    // 'AUDNZD',
+    // 'AUDCHF',
+    // 'EURCHF',
+    // 'NZDCAD',
+    // 'CADCHF',
+    // 'CHFJPY',
+    // 'NZDCHF',
+    // 'USDZAR',
+    // 'USDTRY',
+    // 'AUDSGD',
+    // 'GBPSGD',
+    // 'EURSGD',
+    // 'SGDJPY',
+];
 
 const prisma = new PrismaClient()
 
@@ -19,11 +60,11 @@ bot.onText(/\/start/, async (msg, match) => {
     let fromId = msg.from.id;
     let name = msg.from.first_name;
 
-    const user = prisma.user.findFirst({
+    const userCount = prisma.user.count({
         where: {telegramId: fromId}
     });
 
-    if (user) {
+    if (userCount > 0) {
         await bot.sendMessage(fromId, `${name}, you already joined the signal group!`);
         return;
     }
@@ -40,23 +81,15 @@ bot.onText(/\/start/, async (msg, match) => {
     await bot.sendMessage(fromId, `Welcome ${name}, thank you for joining the signal group`);
 });
 
-bot.onText(/\/signal/, async (msg, match) => {
-    let fromId = msg.from.id;
-
-    await bot.sendMessage(fromId, `Fetching signal`);
-
-    await requestSignal(fromId);
-});
-
 bot.onText(/\/quit/, async (msg, match) => {
     let fromId = msg.from.id;
     let name = msg.from.first_name;
 
-    const user = await prisma.user.findFirst({
+    const userCount = await prisma.user.count({
         where: {telegramId: fromId}
     });
 
-    if (!user) {
+    if (userCount < 1) {
         await bot.sendMessage(fromId, `${name}, you already quit the signal group!`);
         return;
     }
@@ -65,107 +98,122 @@ bot.onText(/\/quit/, async (msg, match) => {
         where: {telegramId: fromId},
     })
 
-    // send back the matched "whatever" to the chat
     await bot.sendMessage(fromId, `We're sad to see you leave this signal group ${name}, see you in the future!`);
 });
 
-const formatMessage = (pairIndicatorDatum) => {
-    let message = '';
-    message += `1 hour: ${pairIndicatorDatum.h1_trend === 'uptrend' ? '🟢' : '🔴'} \n`;
-    message += `4 hours: ${pairIndicatorDatum.h4_trend === 'uptrend' ? '🟢' : '🔴'} \n`;
-    message += `1 daily: ${pairIndicatorDatum.d1_trend === 'uptrend' ? '🟢' : '🔴'} \n`;
-    message += `1 weekly: ${pairIndicatorDatum.w1_trend === 'uptrend' ? '🟢' : '🔴'} \n`;
+// Send all pair market info
+bot.onText(/\/trend/, async (msg, match) => {
+    let fromId = msg.from.id;
 
-    if (pairIndicatorDatum.signal === BUY) {
-        message = `${pairIndicatorDatum.pair} Buy \n` + message
-    } else if (pairIndicatorDatum.signal === SELL) {
-        message = `${pairIndicatorDatum.pair} Sell \n` + message
-    } else {
-        message = `${pairIndicatorDatum.pair} No Trade \n` + message
+    await bot.sendMessage(fromId, `Fetching signal`);
+
+    const prices = await fetchLatestDbPricesData();
+
+    if (prices.length === 0) {
+        await bot.sendMessage(fromId, 'No historical price data found!');
+        return;
     }
 
-    return message
-}
+    const message = formatMessage(prices);
 
-const sendMessage = async (users, message) => {
-    for (let i = 0; i < users.length; i++) {
-        await bot.sendMessage(users[i].telegramId, message);
-    }
-}
+    await bot.sendMessage(fromId, message)
+});
 
-const requestSignal = async (telegramId) => {
-    const prices = await prisma.$queryRaw`SELECT * FROM Price WHERE id IN (SELECT MAX(id) FROM Price GROUP BY pair)`;
+// Send pair with signal only
+bot.onText(/\/signal/, async (msg, match) => {
+    let fromId = msg.from.id;
 
-    for (let i = 0; i < prices.length; i++) {
-        const pairSignal = await checkSignal(prices[i], prices[i]);
+    await bot.sendMessage(fromId, `Fetching signal`);
 
-        const message = formatMessage(pairSignal)
+    const prices = await fetchLatestDbPricesData();
 
-        await bot.sendMessage(telegramId, message)
-    }
-}
+    let pricesWithSignal = [];
 
-const main = async () => {
-    console.log('fetching trend from trading rush')
-    const pairTrends = await scrapeTrend();
-
-    console.log('fetching all users')
-    const users = await prisma.user.findMany();
-
-    console.log('fetching pair ema and macd data')
-    for (let i = 0; i < pairTrends.length; i++) {
-        const pairIndicatorDatum = await scrapeFxPrice(pairTrends[i])
-
-        if (!pairIndicatorDatum) {
-            continue;
+    prices.forEach(price => {
+        if (isBuySignal(price) || isSellSignal(price)) {
+            pricesWithSignal.push(price)
         }
+    })
 
-        await prisma.price.create({
-            data: {
-                pair: pairIndicatorDatum.pair,
-                closed_price: pairIndicatorDatum.closedPrice,
-                ema_price: pairIndicatorDatum.emaPrice,
-                histogram: pairIndicatorDatum.histogram,
-                macd_line: pairIndicatorDatum.macdLine,
-                signal_line: pairIndicatorDatum.signalLine,
-                h1_trend: pairIndicatorDatum.oneHour,
-                h4_trend: pairIndicatorDatum.fourHours,
-                d1_trend: pairIndicatorDatum.daily,
-                w1_trend: pairIndicatorDatum.weekly,
-            }
+    if (pricesWithSignal.length === 0) {
+        await bot.sendMessage(fromId, 'No trade signal!');
+        return;
+    }
+
+    const message = formatMessage(pricesWithSignal);
+
+    await bot.sendMessage(fromId, message)
+});
+
+const sendMessageToUsers = (users, message) => users.forEach(user => bot.sendMessage(user.telegramId, message))
+
+// DB Fetcher
+
+const fetchLatestTradingViewPairData = async () => {
+    console.log('fetching pairs and indicator data')
+    const pairData = await scanTradingView(pairs);
+
+    const today = dayjs()
+
+    const currentHour = new Date(today.year(), today.month(), today.date(), today.hour())
+
+    let pairDbData = [];
+
+    pairData.forEach((pairDatum) => {
+        pairDbData.push({
+            pair: pairDatum.pair,
+            h1_macd: pairDatum.h1_macd,
+            h1_signal: pairDatum.h1_signal,
+            h1_histogram: pairDatum.h1_histogram,
+            h1_ema200: pairDatum.h1_ema200,
+            h1_close: pairDatum.h1_close,
+            h4_ema200: pairDatum.h4_ema200,
+            h4_close: pairDatum.h4_close,
+            d1_ema200: pairDatum.d1_ema200,
+            d1_close: pairDatum.d1_close,
+            w1_ema200: pairDatum.w1_ema200,
+            w1_close: pairDatum.w1_close,
+            created_at: currentHour,
         })
+    })
 
-        // get the latest two pair data
-        const prices = await prisma.price.findMany({
-            orderBy: [
-                {
-                    created_at: 'desc',
-                },
-            ],
-            take: 2,
-            where: {
-                pair: {
-                    equals: pairTrends[i].pair,
-                }
-            }
-        });
-
-        if (prices.length < 2) {
-            continue;
-        }
-
-        const pairSignal = await checkSignal(prices[0], prices[1]);
-
-        const message = formatMessage(pairSignal)
-
-        await sendMessage(users, message)
-    }
+    await prisma.price.createMany({
+        data: pairDbData,
+        skipDuplicates: true,
+    })
 }
+
+const fetchLatestDbPricesData = async () => prisma.$queryRaw`SELECT * FROM Price WHERE created_at = (SELECT MAX(created_at) FROM Price LIMIT 1)`;
+
+const fetchAllUsersData = async () => prisma.user.findMany()
 
 new CronJob(
     cronExpression,
     async function () {
-        await main()
+        const users = await fetchAllUsersData();
+        sendMessageToUsers(users, 'Fetching data!');
+
+        await fetchLatestTradingViewPairData()
+
+        const prices = await fetchLatestDbPricesData();
+
+        let pricesWithSignal = [];
+
+        prices.forEach(price => {
+            if (isBuySignal(price) || isSellSignal(price)) {
+                pricesWithSignal.push(price)
+            }
+        })
+
+
+        if (pricesWithSignal.length === 0) {
+            sendMessageToUsers(users, 'No trade signal!');
+            return;
+        }
+
+        const message = formatMessage(pricesWithSignal);
+
+        sendMessageToUsers(users, message);
     },
     null,
     true,
@@ -173,6 +221,6 @@ new CronJob(
 );
 
 if (process.env.ENVIRONMENT === 'development') {
-    main();
+    fetchLatestTradingViewPairData();
 }
 

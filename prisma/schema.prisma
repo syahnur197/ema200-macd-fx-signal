@@ -18,14 +18,18 @@ model User {
 model Price {
   id           Int      @id @default(autoincrement())
   pair         String
-  closed_price Decimal  @db.Decimal(10, 5)
-  ema_price    Decimal  @db.Decimal(10, 5)
-  histogram    Decimal  @db.Decimal(10, 5)
-  macd_line    Decimal  @db.Decimal(10, 5)
-  signal_line  Decimal  @db.Decimal(10, 5)
-  h1_trend     String
-  h4_trend     String
-  d1_trend     String
-  w1_trend     String
-  created_at   DateTime @default(now())
+  h1_macd      Decimal  @db.Decimal(11, 8)
+  h1_signal    Decimal  @db.Decimal(11, 8)
+  h1_histogram Decimal  @db.Decimal(11, 8)
+  h1_close     Decimal  @db.Decimal(10, 5)
+  h1_ema200    Decimal  @db.Decimal(10, 5)
+  h4_close     Decimal  @db.Decimal(10, 5)
+  h4_ema200    Decimal  @db.Decimal(10, 5)
+  d1_close     Decimal  @db.Decimal(10, 5)
+  d1_ema200    Decimal  @db.Decimal(10, 5)
+  w1_close     Decimal  @db.Decimal(10, 5)
+  w1_ema200    Decimal  @db.Decimal(10, 5)
+  created_at   DateTime
+
+  @@unique([pair, created_at])
 }
