@@ -4,7 +4,7 @@ import {CronJob} from 'cron'
 import {PrismaClient} from "@prisma/client";
 import {scanTradingView} from "./tradingview-scanner.js";
 import dayjs from "dayjs";
-import {formatMessage, isBuySignal, isSellSignal} from "./util.js";
+import {formatMessage, isNoSignal, isPerfectBuySignal, isPerfectSellSignal} from "./util.js";
 
 dotenv.config()
 
@@ -18,34 +18,32 @@ const pairs = [
     'USDCAD',
     'USDCHF',
 
-    // for future
-    // 'GBPJPY',
-    // 'EURJPY',
-    // 'AUDJPY',
-    // 'GBPAUD',
-    // 'EURUAD',
-    // 'EURGBP',
-    // 'CADJPY',
-    // 'AUDCAD',
-    // 'EURCAD',
-    // 'EURNZD',
-    // 'NZDJPY',
-    // 'GBPNZD',
-    // 'GBPCAD',
-    // 'GBPCHF',
-    // 'AUDNZD',
-    // 'AUDCHF',
-    // 'EURCHF',
-    // 'NZDCAD',
-    // 'CADCHF',
-    // 'CHFJPY',
-    // 'NZDCHF',
-    // 'USDZAR',
-    // 'USDTRY',
-    // 'AUDSGD',
-    // 'GBPSGD',
-    // 'EURSGD',
-    // 'SGDJPY',
+    'GBPJPY',
+    'EURJPY',
+    'AUDJPY',
+    'GBPAUD',
+    'EURUAD',
+    'EURGBP',
+    'CADJPY',
+    'AUDCAD',
+    'EURCAD',
+    'EURNZD',
+    'NZDJPY',
+    'GBPNZD',
+    'GBPCAD',
+    'GBPCHF',
+    'AUDNZD',
+    'AUDCHF',
+    'EURCHF',
+    'NZDCAD',
+    'CADCHF',
+    'CHFJPY',
+    'NZDCHF',
+    'USDZAR',
+    'AUDSGD',
+    'GBPSGD',
+    'EURSGD',
+    'SGDJPY',
 ];
 
 const prisma = new PrismaClient()
@@ -130,7 +128,7 @@ bot.onText(/\/signal/, async (msg, match) => {
     let pricesWithSignal = [];
 
     prices.forEach(price => {
-        if (isBuySignal(price) || isSellSignal(price)) {
+        if (!isNoSignal(price)) {
             pricesWithSignal.push(price)
         }
     })
@@ -200,7 +198,7 @@ new CronJob(
         let pricesWithSignal = [];
 
         prices.forEach(price => {
-            if (isBuySignal(price) || isSellSignal(price)) {
+            if (isPerfectBuySignal(price) || isPerfectSellSignal(price)) {
                 pricesWithSignal.push(price)
             }
         })
