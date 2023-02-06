@@ -133,10 +133,24 @@ export const formatMessage = (prices, timeframe) => {
             message += `${price.pair} 📈 PERFECT BUY Signal ${timeframe} \n`;
             message += 'MACD Negative \n';
             message += 'Above EMA 200 \n';
+
+            message += `1 hour: ${price.h1_close > price.h1_ema200 ? '🟢' : '🔴'} \n`;
+            message += `4 hours: ${price.h4_close > price.h4_ema200 ? '🟢' : '🔴'} \n`;
+            message += `1 daily: ${price.d1_close > price.d1_ema200 ? '🟢' : '🔴'} \n`;
+            message += `1 weekly: ${price.w1_close > price.w1_ema200 ? '🟢' : '🔴'} \n`;
+
+            message += "\n\n";
         } else if (isPerfectSellSignal(...payload)) {
             message += `${price.pair} 📉 PERFECT SELL Signal ${timeframe} \n`;
             message += 'MACD Positive \n';
             message += 'Below EMA 200 \n';
+
+            message += `1 hour: ${price.h1_close > price.h1_ema200 ? '🟢' : '🔴'} \n`;
+            message += `4 hours: ${price.h4_close > price.h4_ema200 ? '🟢' : '🔴'} \n`;
+            message += `1 daily: ${price.d1_close > price.d1_ema200 ? '🟢' : '🔴'} \n`;
+            message += `1 weekly: ${price.w1_close > price.w1_ema200 ? '🟢' : '🔴'} \n`;
+
+            message += "\n\n";
         }
 
         // else if (isWeakBuySignal(...payload)) {
@@ -161,12 +175,7 @@ export const formatMessage = (prices, timeframe) => {
         //     message += `${price.pair} No Trade \n`;
         // }
 
-        message += `1 hour: ${price.h1_close > price.h1_ema200 ? '🟢' : '🔴'} \n`;
-        message += `4 hours: ${price.h4_close > price.h4_ema200 ? '🟢' : '🔴'} \n`;
-        message += `1 daily: ${price.d1_close > price.d1_ema200 ? '🟢' : '🔴'} \n`;
-        message += `1 weekly: ${price.w1_close > price.w1_ema200 ? '🟢' : '🔴'} \n`;
 
-        message += "\n\n";
     })
 
     return message
