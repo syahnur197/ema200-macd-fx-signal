@@ -137,23 +137,27 @@ export const formatMessage = (prices, timeframe) => {
             message += `${price.pair} 📉 PERFECT SELL Signal ${timeframe} \n`;
             message += 'MACD Positive \n';
             message += 'Below EMA 200 \n';
-        } else if (isWeakBuySignal(...payload)) {
-            message += `${price.pair} 📈 Weak BUY Signal ${timeframe} \n`;
-            message += 'MACD Positive \n';
-            message += 'Above EMA 200 \n';
-        } else if (isWeakSellSignal(...payload)) {
-            message += `${price.pair} 📉 Weak SELL Signal ${timeframe} \n`;
-            message += 'MACD Negative \n';
-            message += 'Below EMA 200 \n';
-        } else if (isDangerousBuySignal(...payload)) {
-            message += `${price.pair} 📈 Danger BUY Signal in Downtrend ${timeframe} \n`;
-            message += 'MACD Negative \n';
-            message += 'Below EMA 200 \n';
-        } else if (isDangerousSellSignal(...payload)) {
-            message += `${price.pair} 📉 Danger SELL Signal in Uptrend ${timeframe} \n`;
-            message += 'MACD Positive \n';
-            message += 'Above EMA 200 \n';
-        } else {
+        }
+
+        // else if (isWeakBuySignal(...payload)) {
+        //     message += `${price.pair} 📈 Weak BUY Signal ${timeframe} \n`;
+        //     message += 'MACD Positive \n';
+        //     message += 'Above EMA 200 \n';
+        // } else if (isWeakSellSignal(...payload)) {
+        //     message += `${price.pair} 📉 Weak SELL Signal ${timeframe} \n`;
+        //     message += 'MACD Negative \n';
+        //     message += 'Below EMA 200 \n';
+        // } else if (isDangerousBuySignal(...payload)) {
+        //     message += `${price.pair} 📈 Danger BUY Signal in Downtrend ${timeframe} \n`;
+        //     message += 'MACD Negative \n';
+        //     message += 'Below EMA 200 \n';
+        // } else if (isDangerousSellSignal(...payload)) {
+        //     message += `${price.pair} 📉 Danger SELL Signal in Uptrend ${timeframe} \n`;
+        //     message += 'MACD Positive \n';
+        //     message += 'Above EMA 200 \n';
+        // }
+
+        else {
             message += `${price.pair} No Trade \n`;
         }
 
