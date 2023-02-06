@@ -37,6 +37,7 @@ CREATE TABLE `Price` (
     `d1_ema200` DECIMAL(10, 5) NOT NULL,
     `w1_close` DECIMAL(10, 5) NOT NULL,
     `w1_ema200` DECIMAL(10, 5) NOT NULL,
+    `timeframe` VARCHAR(191) NOT NULL,
     `created_at` DATETIME(3) NOT NULL,
 
     UNIQUE INDEX `Price_pair_created_at_key`(`pair`, `created_at`),

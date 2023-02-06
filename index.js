@@ -48,7 +48,6 @@ const pairs = [
 const prisma = new PrismaClient()
 
 const telegramBotToken = process.env.BOT_TOKEN; // Telegram bot
-const cronExpression = process.env.CRON_EXPRESSION
 
 const bot = new TelegramBot(telegramBotToken, {polling: true});
 
@@ -104,7 +103,7 @@ bot.onText(/\/trend/, async (msg, match) => {
 
     await bot.sendMessage(fromId, `Fetching signal`);
 
-    const prices = await fetchLatestDbPricesData();
+    const prices = await fetchLatestDbPricesData('H1');
 
     if (prices.length === 0) {
         await bot.sendMessage(fromId, 'No historical price data found!');
@@ -122,13 +121,19 @@ bot.onText(/\/signal/, async (msg, match) => {
 
     await bot.sendMessage(fromId, `Fetching signal`);
 
-    const prices = await fetchLatestDbPricesData();
+    let prices = await fetchLatestDbPricesData('H1');
 
     let pricesWithSignal = [];
 
     // H1 signals
     prices.forEach(price => {
-        if (!isNoSignal(price.h1_close, price.h1_ema200, price.h1_macd, price.h1_signal, price.h1_histogram)) {
+        if (!isNoSignal({
+            close: price.h1_close,
+            ema200: price.h1_ema200,
+            macd: price.h1_macd,
+            signal: price.h1_signal,
+            histogram: price.h1_histogram,
+        })) {
             pricesWithSignal.push(price)
         }
     })
@@ -139,9 +144,19 @@ bot.onText(/\/signal/, async (msg, match) => {
         await bot.sendMessage(fromId, message)
     }
 
+    prices = await fetchLatestDbPricesData('M30');
+
+    pricesWithSignal = [];
+
     // M30 signals
     prices.forEach(price => {
-        if (!isNoSignal(price.m30_close, price.m30_ema200, price.m30_macd, price.m30_signal, price.m30_histogram)) {
+        if (!isNoSignal({
+            close: price.m30_close,
+            ema200: price.m30_ema200,
+            macd: price.m30_macd,
+            signal: price.m30_signal,
+            histogram: price.m30_histogram,
+        })) {
             pricesWithSignal.push(price)
         }
     })
@@ -152,9 +167,19 @@ bot.onText(/\/signal/, async (msg, match) => {
         await bot.sendMessage(fromId, message)
     }
 
+    prices = await fetchLatestDbPricesData('M15');
+
+    pricesWithSignal = [];
+
     // M15 signals
     prices.forEach(price => {
-        if (!isNoSignal(price.m15_close, price.m15_ema200, price.m15_macd, price.m15_signal, price.m15_histogram)) {
+        if (!isNoSignal({
+            close: price.m15_close,
+            ema200: price.m15_ema200,
+            macd: price.m15_macd,
+            signal: price.m15_signal,
+            histogram: price.m15_histogram,
+        })) {
             pricesWithSignal.push(price)
         }
     })
@@ -171,11 +196,11 @@ const sendMessageToUsers = (users, message) => users.forEach(user => bot.sendMes
 
 // DB Fetcher
 
-const fetchLatestTradingViewPairData = async () => {
-    console.log('fetching pairs and indicator data')
-    const pairData = await scanTradingView(pairs);
+const storePairData = async (pairData, timeframe = '') => {
 
     let pairDbData = [];
+
+    let now = new Date();
 
     pairData.forEach((pairDatum) => {
         pairDbData.push({
@@ -206,7 +231,8 @@ const fetchLatestTradingViewPairData = async () => {
             d1_close: pairDatum.d1_close,
             w1_ema200: pairDatum.w1_ema200,
             w1_close: pairDatum.w1_close,
-            created_at: new Date(),
+            timeframe: timeframe,
+            created_at: now,
         })
     })
 
@@ -216,7 +242,7 @@ const fetchLatestTradingViewPairData = async () => {
     })
 }
 
-const fetchLatestDbPricesData = async () => prisma.$queryRaw`SELECT * FROM Price WHERE created_at = (SELECT MAX(created_at) FROM Price LIMIT 1)`;
+const fetchLatestDbPricesData = async (timeframe) => prisma.$queryRaw`SELECT * FROM Price WHERE created_at = (SELECT MAX(created_at) FROM Price WHERE timeframe = ${timeframe} LIMIT 1)`;
 
 const fetchAllUsersData = async () => prisma.user.findMany()
 
@@ -226,14 +252,38 @@ new CronJob(
         const users = await fetchAllUsersData();
         sendMessageToUsers(users, 'Fetching data!');
 
-        await fetchLatestTradingViewPairData()
+        const oldPrices = await fetchLatestDbPricesData('H1');
 
-        const prices = await fetchLatestDbPricesData();
+        const pairData = await scanTradingView(pairs);
+
+        await storePairData(pairData, 'H1')
+
+        const newPrices = await fetchLatestDbPricesData('H1');
 
         let pricesWithSignal = [];
 
-        prices.forEach(price => {
-            if (!isNoSignal(price.h1_close, price.h1_ema200, price.h1_macd, price.h1_signal, price.h1_histogram)) {
+        newPrices.forEach(price => {
+
+            let old_price_data = oldPrices.filter(oldPrice => oldPrice.pair === price.pair)[0]
+
+            let new_price = {
+                close: price.h1_close,
+                ema200: price.h1_ema200,
+                macd: price.h1_macd,
+                signal: price.h1_signal,
+                histogram: price.h1_histogram,
+            }
+
+            let old_price = {
+                close: old_price_data.h1_close,
+                ema200: old_price_data.h1_ema200,
+                macd: old_price_data.h1_macd,
+                signal: old_price_data.h1_signal,
+                histogram: old_price_data.h1_histogram,
+            }
+
+            // only push if previous price does not generate any signal
+            if (!isNoSignal(new_price) && isNoSignal(old_price)) {
                 pricesWithSignal.push(price)
             }
         })
@@ -259,14 +309,38 @@ new CronJob(
         const users = await fetchAllUsersData();
         sendMessageToUsers(users, 'Fetching data!');
 
-        await fetchLatestTradingViewPairData()
+        const oldPrices = await fetchLatestDbPricesData('M30');
 
-        const prices = await fetchLatestDbPricesData();
+        const pairData = await scanTradingView(pairs);
+
+        await storePairData(pairData, 'M30')
+
+        const newPrices = await fetchLatestDbPricesData('M30');
 
         let pricesWithSignal = [];
 
-        prices.forEach(price => {
-            if (!isNoSignal(price.m30_close, price.m30_ema200, price.m30_macd, price.m30_signal, price.m30_histogram)) {
+        newPrices.forEach(price => {
+
+            let old_price_data = oldPrices.filter(oldPrice => oldPrice.pair === price.pair)[0]
+
+            let new_price = {
+                close: price.m30_close,
+                ema200: price.m30_ema200,
+                macd: price.m30_macd,
+                signal: price.m30_signal,
+                histogram: price.m30_histogram,
+            }
+
+            let old_price = {
+                close: old_price_data.m30_close,
+                ema200: old_price_data.m30_ema200,
+                macd: old_price_data.m30_macd,
+                signal: old_price_data.m30_signal,
+                histogram: old_price_data.m30_histogram,
+            }
+
+            // only push if previous price does not generate any signal
+            if (!isNoSignal(new_price) && isNoSignal(old_price)) {
                 pricesWithSignal.push(price)
             }
         })
@@ -290,14 +364,38 @@ new CronJob(
         const users = await fetchAllUsersData();
         sendMessageToUsers(users, 'Fetching data!');
 
-        await fetchLatestTradingViewPairData()
+        const oldPrices = await fetchLatestDbPricesData('M15');
 
-        const prices = await fetchLatestDbPricesData();
+        const pairData = await scanTradingView(pairs);
+
+        await storePairData(pairData, 'M15')
+
+        const newPrices = await fetchLatestDbPricesData('M15');
 
         let pricesWithSignal = [];
 
-        prices.forEach(price => {
-            if (!isNoSignal(price.m15_close, price.m15_ema200, price.m15_macd, price.m15_signal, price.m15_histogram)) {
+        newPrices.forEach(price => {
+
+            let old_price_data = oldPrices.filter(oldPrice => oldPrice.pair === price.pair)[0]
+
+            let new_price = {
+                close: price.m15_close,
+                ema200: price.m15_ema200,
+                macd: price.m15_macd,
+                signal: price.m15_signal,
+                histogram: price.m15_histogram,
+            }
+
+            let old_price = {
+                close: old_price_data.m15_close,
+                ema200: old_price_data.m15_ema200,
+                macd: old_price_data.m15_macd,
+                signal: old_price_data.m15_signal,
+                histogram: old_price_data.m15_histogram,
+            }
+
+            // only push if previous price does not generate any signal
+            if (!isNoSignal(new_price) && isNoSignal(old_price)) {
                 pricesWithSignal.push(price)
             }
         })
@@ -315,5 +413,11 @@ new CronJob(
     'Asia/Brunei'
 );
 
-fetchLatestTradingViewPairData();
+(async () => {
+    console.log('fetching pairs and indicator data')
+    const pairData = await scanTradingView(pairs);
+    await storePairData(pairData, 'H1');
+    await storePairData(pairData, 'M30');
+    await storePairData(pairData, 'M15');
+})()
 

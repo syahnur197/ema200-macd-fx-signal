@@ -44,6 +44,7 @@ model Price {
   d1_ema200     Decimal  @db.Decimal(10, 5)
   w1_close      Decimal  @db.Decimal(10, 5)
   w1_ema200     Decimal  @db.Decimal(10, 5)
+  timeframe     String
   created_at    DateTime
 
   @@unique([pair, created_at])
