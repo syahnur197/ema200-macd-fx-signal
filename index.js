@@ -121,75 +121,81 @@ bot.onText(/\/signal/, async (msg, match) => {
 
     await bot.sendMessage(fromId, `Fetching signal`);
 
-    let prices = await fetchLatestDbPricesData('H1');
 
-    let pricesWithSignal = [];
+    if (process.env.ENABLE_H1 === 'true') {
+        let prices = await fetchLatestDbPricesData('H1');
 
-    // H1 signals
-    prices.forEach(price => {
-        if (!isNoSignal({
-            close: price.h1_close,
-            ema200: price.h1_ema200,
-            macd: price.h1_macd,
-            signal: price.h1_signal,
-            histogram: price.h1_histogram,
-        })) {
-            pricesWithSignal.push(price)
+        let pricesWithSignal = [];
+
+        // H1 signals
+        prices.forEach(price => {
+            if (!isNoSignal({
+                close: price.h1_close,
+                ema200: price.h1_ema200,
+                macd: price.h1_macd,
+                signal: price.h1_signal,
+                histogram: price.h1_histogram,
+            })) {
+                pricesWithSignal.push(price)
+            }
+        })
+
+        if (pricesWithSignal.length !== 0) {
+            let message = formatMessage(pricesWithSignal, "H1");
+
+            await bot.sendMessage(fromId, message)
         }
-    })
-
-    if (pricesWithSignal.length !== 0) {
-        let message = formatMessage(pricesWithSignal, "H1");
-
-        await bot.sendMessage(fromId, message)
     }
 
-    prices = await fetchLatestDbPricesData('M30');
+    if (process.env.ENABLE_M30 === 'true') {
+        let prices = await fetchLatestDbPricesData('M30');
 
-    pricesWithSignal = [];
+        let pricesWithSignal = [];
 
-    // M30 signals
-    prices.forEach(price => {
-        if (!isNoSignal({
-            close: price.m30_close,
-            ema200: price.m30_ema200,
-            macd: price.m30_macd,
-            signal: price.m30_signal,
-            histogram: price.m30_histogram,
-        })) {
-            pricesWithSignal.push(price)
+        // M30 signals
+        prices.forEach(price => {
+            if (!isNoSignal({
+                close: price.m30_close,
+                ema200: price.m30_ema200,
+                macd: price.m30_macd,
+                signal: price.m30_signal,
+                histogram: price.m30_histogram,
+            })) {
+                pricesWithSignal.push(price)
+            }
+        })
+
+        if (pricesWithSignal.length !== 0) {
+            let message = formatMessage(pricesWithSignal, "M30");
+
+            await bot.sendMessage(fromId, message)
         }
-    })
-
-    if (pricesWithSignal.length !== 0) {
-        let message = formatMessage(pricesWithSignal, "M30");
-
-        await bot.sendMessage(fromId, message)
     }
 
-    prices = await fetchLatestDbPricesData('M15');
+    if (process.env.ENABLE_M15 === 'true') {
+        let prices = await fetchLatestDbPricesData('M15');
 
-    pricesWithSignal = [];
+        let pricesWithSignal = [];
 
-    // M15 signals
-    prices.forEach(price => {
-        if (!isNoSignal({
-            close: price.m15_close,
-            ema200: price.m15_ema200,
-            macd: price.m15_macd,
-            signal: price.m15_signal,
-            histogram: price.m15_histogram,
-        })) {
-            pricesWithSignal.push(price)
+        // M15 signals
+        prices.forEach(price => {
+            if (!isNoSignal({
+                close: price.m15_close,
+                ema200: price.m15_ema200,
+                macd: price.m15_macd,
+                signal: price.m15_signal,
+                histogram: price.m15_histogram,
+            })) {
+                pricesWithSignal.push(price)
+            }
+        })
+
+        if (pricesWithSignal.length !== 0) {
+            let message = formatMessage(pricesWithSignal, "M15");
+
+            await bot.sendMessage(fromId, message)
         }
-    })
-
-    if (pricesWithSignal.length !== 0) {
-        let message = formatMessage(pricesWithSignal, "M15");
-
-        await bot.sendMessage(fromId, message)
     }
-
 });
 
 const sendMessageToUsers = (users, message) => users.forEach(user => bot.sendMessage(user.telegramId, message))
@@ -246,178 +252,196 @@ const fetchLatestDbPricesData = async (timeframe) => prisma.$queryRaw`SELECT * F
 
 const fetchAllUsersData = async () => prisma.user.findMany()
 
-new CronJob(
-    '0 1 * * * *', // every 1st minute of the hour
-    async function () {
-        const users = await fetchAllUsersData();
-        sendMessageToUsers(users, 'Fetching data!');
+if (process.env.ENABLE_H1 === 'true') {
+    new CronJob(
+        '0 1 * * * *', // every 1st minute of the hour
+        async function () {
+            const users = await fetchAllUsersData();
+            sendMessageToUsers(users, 'Fetching data!');
 
-        const oldPrices = await fetchLatestDbPricesData('H1');
+            const oldPrices = await fetchLatestDbPricesData('H1');
 
-        const pairData = await scanTradingView(pairs);
+            const pairData = await scanTradingView(pairs);
 
-        await storePairData(pairData, 'H1')
+            await storePairData(pairData, 'H1')
 
-        const newPrices = await fetchLatestDbPricesData('H1');
+            const newPrices = await fetchLatestDbPricesData('H1');
 
-        let pricesWithSignal = [];
+            let pricesWithSignal = [];
 
-        newPrices.forEach(price => {
+            newPrices.forEach(price => {
 
-            let old_price_data = oldPrices.filter(oldPrice => oldPrice.pair === price.pair)[0]
+                let old_price_data = oldPrices.filter(oldPrice => oldPrice.pair === price.pair)[0]
 
-            let new_price = {
-                close: price.h1_close,
-                ema200: price.h1_ema200,
-                macd: price.h1_macd,
-                signal: price.h1_signal,
-                histogram: price.h1_histogram,
+                let new_price = {
+                    close: price.h1_close,
+                    ema200: price.h1_ema200,
+                    macd: price.h1_macd,
+                    signal: price.h1_signal,
+                    histogram: price.h1_histogram,
+                }
+
+                let old_price = {
+                    close: old_price_data.h1_close,
+                    ema200: old_price_data.h1_ema200,
+                    macd: old_price_data.h1_macd,
+                    signal: old_price_data.h1_signal,
+                    histogram: old_price_data.h1_histogram,
+                }
+
+                // only push if previous price does not generate any signal
+                if (!isNoSignal(new_price) && isNoSignal(old_price)) {
+                    pricesWithSignal.push(price)
+                }
+            })
+
+
+            if (pricesWithSignal.length === 0) {
+                sendMessageToUsers(users, 'No trade signal for H1!');
+                return;
             }
 
-            let old_price = {
-                close: old_price_data.h1_close,
-                ema200: old_price_data.h1_ema200,
-                macd: old_price_data.h1_macd,
-                signal: old_price_data.h1_signal,
-                histogram: old_price_data.h1_histogram,
+            const message = formatMessage(pricesWithSignal, "H1");
+
+            sendMessageToUsers(users, message);
+        },
+        null,
+        true,
+        'Asia/Brunei'
+    );
+}
+
+if (process.env.ENABLE_M30 === 'true') {
+    new CronJob(
+        '0 */30 * * * *', // every 30 minute
+        async function () {
+            const users = await fetchAllUsersData();
+            sendMessageToUsers(users, 'Fetching data!');
+
+            const oldPrices = await fetchLatestDbPricesData('M30');
+
+            const pairData = await scanTradingView(pairs);
+
+            await storePairData(pairData, 'M30')
+
+            const newPrices = await fetchLatestDbPricesData('M30');
+
+            let pricesWithSignal = [];
+
+            newPrices.forEach(price => {
+
+                let old_price_data = oldPrices.filter(oldPrice => oldPrice.pair === price.pair)[0]
+
+                let new_price = {
+                    close: price.m30_close,
+                    ema200: price.m30_ema200,
+                    macd: price.m30_macd,
+                    signal: price.m30_signal,
+                    histogram: price.m30_histogram,
+                }
+
+                let old_price = {
+                    close: old_price_data.m30_close,
+                    ema200: old_price_data.m30_ema200,
+                    macd: old_price_data.m30_macd,
+                    signal: old_price_data.m30_signal,
+                    histogram: old_price_data.m30_histogram,
+                }
+
+                // only push if previous price does not generate any signal
+                if (!isNoSignal(new_price) && isNoSignal(old_price)) {
+                    pricesWithSignal.push(price)
+                }
+            })
+
+            if (pricesWithSignal.length === 0) {
+                return;
             }
 
-            // only push if previous price does not generate any signal
-            if (!isNoSignal(new_price) && isNoSignal(old_price)) {
-                pricesWithSignal.push(price)
-            }
-        })
+            const message = formatMessage(pricesWithSignal, "M30");
 
+            sendMessageToUsers(users, message);
+        },
+        null,
+        true,
+        'Asia/Brunei'
+    );
+}
 
-        if (pricesWithSignal.length === 0) {
-            sendMessageToUsers(users, 'No trade signal for H1!');
-            return;
-        }
+if (process.env.ENABLE_M15 === 'true') {
+    new CronJob(
+        '0 */15 * * * *', // every 15 minute
+        async function () {
+            const users = await fetchAllUsersData();
+            sendMessageToUsers(users, 'Fetching data!');
 
-        const message = formatMessage(pricesWithSignal, "H1");
+            const oldPrices = await fetchLatestDbPricesData('M15');
 
-        sendMessageToUsers(users, message);
-    },
-    null,
-    true,
-    'Asia/Brunei'
-);
+            const pairData = await scanTradingView(pairs);
 
-new CronJob(
-    '0 */30 * * * *', // every 30 minute
-    async function () {
-        const users = await fetchAllUsersData();
-        sendMessageToUsers(users, 'Fetching data!');
+            await storePairData(pairData, 'M15')
 
-        const oldPrices = await fetchLatestDbPricesData('M30');
+            const newPrices = await fetchLatestDbPricesData('M15');
 
-        const pairData = await scanTradingView(pairs);
+            let pricesWithSignal = [];
 
-        await storePairData(pairData, 'M30')
+            newPrices.forEach(price => {
 
-        const newPrices = await fetchLatestDbPricesData('M30');
+                let old_price_data = oldPrices.filter(oldPrice => oldPrice.pair === price.pair)[0]
 
-        let pricesWithSignal = [];
+                let new_price = {
+                    close: price.m15_close,
+                    ema200: price.m15_ema200,
+                    macd: price.m15_macd,
+                    signal: price.m15_signal,
+                    histogram: price.m15_histogram,
+                }
 
-        newPrices.forEach(price => {
+                let old_price = {
+                    close: old_price_data.m15_close,
+                    ema200: old_price_data.m15_ema200,
+                    macd: old_price_data.m15_macd,
+                    signal: old_price_data.m15_signal,
+                    histogram: old_price_data.m15_histogram,
+                }
 
-            let old_price_data = oldPrices.filter(oldPrice => oldPrice.pair === price.pair)[0]
+                // only push if previous price does not generate any signal
+                if (!isNoSignal(new_price) && isNoSignal(old_price)) {
+                    pricesWithSignal.push(price)
+                }
+            })
 
-            let new_price = {
-                close: price.m30_close,
-                ema200: price.m30_ema200,
-                macd: price.m30_macd,
-                signal: price.m30_signal,
-                histogram: price.m30_histogram,
-            }
-
-            let old_price = {
-                close: old_price_data.m30_close,
-                ema200: old_price_data.m30_ema200,
-                macd: old_price_data.m30_macd,
-                signal: old_price_data.m30_signal,
-                histogram: old_price_data.m30_histogram,
-            }
-
-            // only push if previous price does not generate any signal
-            if (!isNoSignal(new_price) && isNoSignal(old_price)) {
-                pricesWithSignal.push(price)
-            }
-        })
-
-        if (pricesWithSignal.length === 0) {
-            return;
-        }
-
-        const message = formatMessage(pricesWithSignal, "M30");
-
-        sendMessageToUsers(users, message);
-    },
-    null,
-    true,
-    'Asia/Brunei'
-);
-
-new CronJob(
-    '0 */15 * * * *', // every 15 minute
-    async function () {
-        const users = await fetchAllUsersData();
-        sendMessageToUsers(users, 'Fetching data!');
-
-        const oldPrices = await fetchLatestDbPricesData('M15');
-
-        const pairData = await scanTradingView(pairs);
-
-        await storePairData(pairData, 'M15')
-
-        const newPrices = await fetchLatestDbPricesData('M15');
-
-        let pricesWithSignal = [];
-
-        newPrices.forEach(price => {
-
-            let old_price_data = oldPrices.filter(oldPrice => oldPrice.pair === price.pair)[0]
-
-            let new_price = {
-                close: price.m15_close,
-                ema200: price.m15_ema200,
-                macd: price.m15_macd,
-                signal: price.m15_signal,
-                histogram: price.m15_histogram,
+            if (pricesWithSignal.length === 0) {
+                return;
             }
 
-            let old_price = {
-                close: old_price_data.m15_close,
-                ema200: old_price_data.m15_ema200,
-                macd: old_price_data.m15_macd,
-                signal: old_price_data.m15_signal,
-                histogram: old_price_data.m15_histogram,
-            }
+            const message = formatMessage(pricesWithSignal, "M15");
 
-            // only push if previous price does not generate any signal
-            if (!isNoSignal(new_price) && isNoSignal(old_price)) {
-                pricesWithSignal.push(price)
-            }
-        })
-
-        if (pricesWithSignal.length === 0) {
-            return;
-        }
-
-        const message = formatMessage(pricesWithSignal, "M15");
-
-        sendMessageToUsers(users, message);
-    },
-    null,
-    true,
-    'Asia/Brunei'
-);
+            sendMessageToUsers(users, message);
+        },
+        null,
+        true,
+        'Asia/Brunei'
+    );
+}
 
 (async () => {
     console.log('fetching pairs and indicator data')
     const pairData = await scanTradingView(pairs);
-    await storePairData(pairData, 'H1');
-    await storePairData(pairData, 'M30');
-    await storePairData(pairData, 'M15');
+
+    if (process.env.ENABLE_H1 === 'true') {
+        console.log("storing H1");
+        await storePairData(pairData, 'H1');
+    }
+
+    if (process.env.ENABLE_M30 === 'true') {
+        console.log("storing M30");
+        await storePairData(pairData, 'M30');
+    }
+
+    if (process.env.ENABLE_M15 === 'true') {
+        console.log("storing M15");
+        await storePairData(pairData, 'M15');
+    }
 })()
 
