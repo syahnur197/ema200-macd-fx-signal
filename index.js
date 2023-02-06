@@ -3,8 +3,7 @@ import TelegramBot from 'node-telegram-bot-api';
 import {CronJob} from 'cron'
 import {PrismaClient} from "@prisma/client";
 import {scanTradingView} from "./tradingview-scanner.js";
-import dayjs from "dayjs";
-import {formatMessage, isNoSignal, isPerfectBuySignal, isPerfectSellSignal} from "./util.js";
+import {formatMessage, isNoSignal} from "./util.js";
 
 dotenv.config()
 
@@ -112,7 +111,7 @@ bot.onText(/\/trend/, async (msg, match) => {
         return;
     }
 
-    const message = formatMessage(prices);
+    const message = formatMessage(prices, "H1");
 
     await bot.sendMessage(fromId, message)
 });
@@ -128,7 +127,7 @@ bot.onText(/\/signal/, async (msg, match) => {
     let pricesWithSignal = [];
 
     prices.forEach(price => {
-        if (!isNoSignal(price)) {
+        if (!isNoSignal(price.h1_close, price.h1_ema200, price.h1_macd, price.h1_signal, price.h1_histogram)) {
             pricesWithSignal.push(price)
         }
     })
@@ -138,7 +137,7 @@ bot.onText(/\/signal/, async (msg, match) => {
         return;
     }
 
-    const message = formatMessage(pricesWithSignal);
+    const message = formatMessage(pricesWithSignal, "H1");
 
     await bot.sendMessage(fromId, message)
 });
@@ -151,15 +150,26 @@ const fetchLatestTradingViewPairData = async () => {
     console.log('fetching pairs and indicator data')
     const pairData = await scanTradingView(pairs);
 
-    const today = dayjs()
-
-    const currentHour = new Date(today.year(), today.month(), today.date(), today.hour())
-
     let pairDbData = [];
 
     pairData.forEach((pairDatum) => {
         pairDbData.push({
             pair: pairDatum.pair,
+            m5_macd: pairDatum.m5_macd,
+            m5_signal: pairDatum.m5_signal,
+            m5_histogram: pairDatum.m5_histogram,
+            m5_ema200: pairDatum.m5_ema200,
+            m5_close: pairDatum.m5_close,
+            m15_macd: pairDatum.m15_macd,
+            m15_signal: pairDatum.m15_signal,
+            m15_histogram: pairDatum.m15_histogram,
+            m15_ema200: pairDatum.m15_ema200,
+            m15_close: pairDatum.m15_close,
+            m30_macd: pairDatum.m30_macd,
+            m30_signal: pairDatum.m30_signal,
+            m30_histogram: pairDatum.m30_histogram,
+            m30_ema200: pairDatum.m30_ema200,
+            m30_close: pairDatum.m30_close,
             h1_macd: pairDatum.h1_macd,
             h1_signal: pairDatum.h1_signal,
             h1_histogram: pairDatum.h1_histogram,
@@ -171,7 +181,7 @@ const fetchLatestTradingViewPairData = async () => {
             d1_close: pairDatum.d1_close,
             w1_ema200: pairDatum.w1_ema200,
             w1_close: pairDatum.w1_close,
-            created_at: currentHour,
+            created_at: new Date(),
         })
     })
 
@@ -186,7 +196,7 @@ const fetchLatestDbPricesData = async () => prisma.$queryRaw`SELECT * FROM Price
 const fetchAllUsersData = async () => prisma.user.findMany()
 
 new CronJob(
-    cronExpression,
+    '0 1 * * * *', // every 1st minute of the hour
     async function () {
         const users = await fetchAllUsersData();
         sendMessageToUsers(users, 'Fetching data!');
@@ -198,18 +208,18 @@ new CronJob(
         let pricesWithSignal = [];
 
         prices.forEach(price => {
-            if (isPerfectBuySignal(price) || isPerfectSellSignal(price)) {
+            if (!isNoSignal(price.h1_close, price.h1_ema200, price.h1_macd, price.h1_signal, price.h1_histogram)) {
                 pricesWithSignal.push(price)
             }
         })
 
 
         if (pricesWithSignal.length === 0) {
-            sendMessageToUsers(users, 'No trade signal!');
+            sendMessageToUsers(users, 'No trade signal for H1!');
             return;
         }
 
-        const message = formatMessage(pricesWithSignal);
+        const message = formatMessage(pricesWithSignal, "H1");
 
         sendMessageToUsers(users, message);
     },
@@ -218,7 +228,67 @@ new CronJob(
     'Asia/Brunei'
 );
 
-if (process.env.ENVIRONMENT === 'development') {
-    fetchLatestTradingViewPairData();
-}
+new CronJob(
+    '0 */30 * * * *', // every 30 minute
+    async function () {
+        const users = await fetchAllUsersData();
+        sendMessageToUsers(users, 'Fetching data!');
+
+        await fetchLatestTradingViewPairData()
+
+        const prices = await fetchLatestDbPricesData();
+
+        let pricesWithSignal = [];
+
+        prices.forEach(price => {
+            if (!isNoSignal(price.m30_close, price.m30_ema200, price.m30_macd, price.m30_signal, price.m30_histogram)) {
+                pricesWithSignal.push(price)
+            }
+        })
+
+        if (pricesWithSignal.length === 0) {
+            return;
+        }
+
+        const message = formatMessage(pricesWithSignal, "M30");
+
+        sendMessageToUsers(users, message);
+    },
+    null,
+    true,
+    'Asia/Brunei'
+);
+
+new CronJob(
+    '0 */15 * * * *', // every 15 minute
+    async function () {
+        const users = await fetchAllUsersData();
+        sendMessageToUsers(users, 'Fetching data!');
+
+        await fetchLatestTradingViewPairData()
+
+        const prices = await fetchLatestDbPricesData();
+
+        let pricesWithSignal = [];
+
+        prices.forEach(price => {
+            if (!isNoSignal(price.m15_close, price.m15_ema200, price.m15_macd, price.m15_signal, price.m15_histogram)) {
+                pricesWithSignal.push(price)
+            }
+        })
+
+        if (pricesWithSignal.length === 0) {
+            return;
+        }
+
+        const message = formatMessage(pricesWithSignal, "M15");
+
+        sendMessageToUsers(users, message);
+    },
+    null,
+    true,
+    'Asia/Brunei'
+);
+
+fetchLatestTradingViewPairData();
 
