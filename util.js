@@ -157,9 +157,9 @@ export const formatMessage = (prices, timeframe) => {
         //     message += 'Above EMA 200 \n';
         // }
 
-        else {
-            message += `${price.pair} No Trade \n`;
-        }
+        // else {
+        //     message += `${price.pair} No Trade \n`;
+        // }
 
         message += `1 hour: ${price.h1_close > price.h1_ema200 ? '🟢' : '🔴'} \n`;
         message += `4 hours: ${price.h4_close > price.h4_ema200 ? '🟢' : '🔴'} \n`;

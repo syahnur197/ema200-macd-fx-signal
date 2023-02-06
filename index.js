@@ -126,20 +126,45 @@ bot.onText(/\/signal/, async (msg, match) => {
 
     let pricesWithSignal = [];
 
+    // H1 signals
     prices.forEach(price => {
         if (!isNoSignal(price.h1_close, price.h1_ema200, price.h1_macd, price.h1_signal, price.h1_histogram)) {
             pricesWithSignal.push(price)
         }
     })
 
-    if (pricesWithSignal.length === 0) {
-        await bot.sendMessage(fromId, 'No trade signal!');
-        return;
+    if (pricesWithSignal.length !== 0) {
+        let message = formatMessage(pricesWithSignal, "H1");
+
+        await bot.sendMessage(fromId, message)
     }
 
-    const message = formatMessage(pricesWithSignal, "H1");
+    // M30 signals
+    prices.forEach(price => {
+        if (!isNoSignal(price.m30_close, price.m30_ema200, price.m30_macd, price.m30_signal, price.m30_histogram)) {
+            pricesWithSignal.push(price)
+        }
+    })
 
-    await bot.sendMessage(fromId, message)
+    if (pricesWithSignal.length !== 0) {
+        let message = formatMessage(pricesWithSignal, "M30");
+
+        await bot.sendMessage(fromId, message)
+    }
+
+    // M15 signals
+    prices.forEach(price => {
+        if (!isNoSignal(price.m15_close, price.m15_ema200, price.m15_macd, price.m15_signal, price.m15_histogram)) {
+            pricesWithSignal.push(price)
+        }
+    })
+
+    if (pricesWithSignal.length !== 0) {
+        let message = formatMessage(pricesWithSignal, "M15");
+
+        await bot.sendMessage(fromId, message)
+    }
+
 });
 
 const sendMessageToUsers = (users, message) => users.forEach(user => bot.sendMessage(user.telegramId, message))
