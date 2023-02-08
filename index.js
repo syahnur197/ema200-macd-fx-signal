@@ -121,6 +121,30 @@ bot.onText(/\/signal/, async (msg, match) => {
 
     await bot.sendMessage(fromId, `Fetching signal`);
 
+    if (process.env.ENABLE_H4 === 'true') {
+        let prices = await fetchLatestDbPricesData('H4');
+
+        let pricesWithSignal = [];
+
+        // H4 signals
+        prices.forEach(price => {
+            if (!isNoSignal({
+                close: price.h4_close,
+                ema200: price.h4_ema200,
+                macd: price.h4_macd,
+                signal: price.h4_signal,
+                histogram: price.h4_histogram,
+            })) {
+                pricesWithSignal.push(price)
+            }
+        })
+
+        if (pricesWithSignal.length !== 0) {
+            let message = formatMessage(pricesWithSignal, "H4");
+
+            await bot.sendMessage(fromId, message)
+        }
+    }
 
     if (process.env.ENABLE_H1 === 'true') {
         let prices = await fetchLatestDbPricesData('H1');
@@ -231,8 +255,14 @@ const storePairData = async (pairData, timeframe = '') => {
             h1_histogram: pairDatum.h1_histogram,
             h1_ema200: pairDatum.h1_ema200,
             h1_close: pairDatum.h1_close,
+            h4_macd: pairDatum.h4_macd,
+            h4_signal: pairDatum.h4_signal,
+            h4_histogram: pairDatum.h4_histogram,
             h4_ema200: pairDatum.h4_ema200,
             h4_close: pairDatum.h4_close,
+            d1_macd: pairDatum.d1_macd,
+            d1_signal: pairDatum.d1_signal,
+            d1_histogram: pairDatum.d1_histogram,
             d1_ema200: pairDatum.d1_ema200,
             d1_close: pairDatum.d1_close,
             w1_ema200: pairDatum.w1_ema200,
@@ -251,6 +281,65 @@ const storePairData = async (pairData, timeframe = '') => {
 const fetchLatestDbPricesData = async (timeframe) => prisma.$queryRaw`SELECT * FROM Price WHERE created_at = (SELECT MAX(created_at) FROM Price WHERE timeframe = ${timeframe} LIMIT 1)`;
 
 const fetchAllUsersData = async () => prisma.user.findMany()
+
+if (process.env.ENABLE_H4 === 'true') {
+    new CronJob(
+        '0 1 6,10,14,18,22,2 * * *', // every 1st minute of the H4 candle closed
+        async function () {
+            const users = await fetchAllUsersData();
+            sendMessageToUsers(users, 'Fetching data!');
+
+            const oldPrices = await fetchLatestDbPricesData('H4');
+
+            const pairData = await scanTradingView(pairs);
+
+            await storePairData(pairData, 'H4')
+
+            const newPrices = await fetchLatestDbPricesData('H4');
+
+            let pricesWithSignal = [];
+
+            newPrices.forEach(price => {
+
+                let old_price_data = oldPrices.filter(oldPrice => oldPrice.pair === price.pair)[0]
+
+                let new_price = {
+                    close: price.h4_close,
+                    ema200: price.h4_ema200,
+                    macd: price.h4_macd,
+                    signal: price.h4_signal,
+                    histogram: price.h4_histogram,
+                }
+
+                let old_price = {
+                    close: old_price_data.h4_close,
+                    ema200: old_price_data.h4_ema200,
+                    macd: old_price_data.h4_macd,
+                    signal: old_price_data.h4_signal,
+                    histogram: old_price_data.h4_histogram,
+                }
+
+                // only push if previous price does not generate any signal
+                if (!isNoSignal(new_price) && isNoSignal(old_price)) {
+                    pricesWithSignal.push(price)
+                }
+            })
+
+
+            if (pricesWithSignal.length === 0) {
+                sendMessageToUsers(users, 'No trade signal for H4!');
+                return;
+            }
+
+            const message = formatMessage(pricesWithSignal, "H4");
+
+            sendMessageToUsers(users, message);
+        },
+        null,
+        true,
+        'Asia/Brunei'
+    );
+}
 
 if (process.env.ENABLE_H1 === 'true') {
     new CronJob(
