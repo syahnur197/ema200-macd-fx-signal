@@ -282,6 +282,65 @@ const fetchLatestDbPricesData = async (timeframe) => prisma.$queryRaw`SELECT * F
 
 const fetchAllUsersData = async () => prisma.user.findMany()
 
+if (process.env.ENABLE_D1 === 'true') {
+    new CronJob(
+        '0 1 6 * * *', // every 1st minute of the H4 candle closed
+        async function () {
+            const users = await fetchAllUsersData();
+            sendMessageToUsers(users, 'Fetching data!');
+
+            const oldPrices = await fetchLatestDbPricesData('D1');
+
+            const pairData = await scanTradingView(pairs);
+
+            await storePairData(pairData, 'D1')
+
+            const newPrices = await fetchLatestDbPricesData('D1');
+
+            let pricesWithSignal = [];
+
+            newPrices.forEach(price => {
+
+                let old_price_data = oldPrices.filter(oldPrice => oldPrice.pair === price.pair)[0]
+
+                let new_price = {
+                    close: price.d1_close,
+                    ema200: price.d1_ema200,
+                    macd: price.d1_macd,
+                    signal: price.d1_signal,
+                    histogram: price.d1_histogram,
+                }
+
+                let old_price = {
+                    close: old_price_data.d1_close,
+                    ema200: old_price_data.d1_ema200,
+                    macd: old_price_data.d1_macd,
+                    signal: old_price_data.d1_signal,
+                    histogram: old_price_data.d1_histogram,
+                }
+
+                // only push if previous price does not generate any signal
+                if (!isNoSignal(new_price) && isNoSignal(old_price)) {
+                    pricesWithSignal.push(price)
+                }
+            })
+
+
+            if (pricesWithSignal.length === 0) {
+                sendMessageToUsers(users, 'No trade signal for D1!');
+                return;
+            }
+
+            const message = formatMessage(pricesWithSignal, "D1");
+
+            sendMessageToUsers(users, message);
+        },
+        null,
+        true,
+        'Asia/Brunei'
+    );
+}
+
 if (process.env.ENABLE_H4 === 'true') {
     new CronJob(
         '0 1 6,10,14,18,22,2 * * *', // every 1st minute of the H4 candle closed
