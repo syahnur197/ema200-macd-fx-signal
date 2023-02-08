@@ -518,10 +518,21 @@ if (process.env.ENABLE_M15 === 'true') {
     console.log('fetching pairs and indicator data')
     const pairData = await scanTradingView(pairs);
 
+    if (process.env.ENABLE_D1 === 'true') {
+        console.log("storing D1");
+        await storePairData(pairData, 'D1');
+    }
+
+    if (process.env.ENABLE_H4 === 'true') {
+        console.log("storing H4");
+        await storePairData(pairData, 'H4');
+    }
+
     if (process.env.ENABLE_H1 === 'true') {
         console.log("storing H1");
         await storePairData(pairData, 'H1');
     }
+
 
     if (process.env.ENABLE_M30 === 'true') {
         console.log("storing M30");
