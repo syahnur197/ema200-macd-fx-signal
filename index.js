@@ -121,6 +121,31 @@ bot.onText(/\/signal/, async (msg, match) => {
 
     await bot.sendMessage(fromId, `Fetching signal`);
 
+    if (process.env.ENABLE_D1 === 'true') {
+        let prices = await fetchLatestDbPricesData('D1');
+
+        let pricesWithSignal = [];
+
+        // D1 signals
+        prices.forEach(price => {
+            if (!isNoSignal({
+                close: price.d1_close,
+                ema200: price.d1_ema200,
+                macd: price.d1_macd,
+                signal: price.d1_signal,
+                histogram: price.d1_histogram,
+            })) {
+                pricesWithSignal.push(price)
+            }
+        })
+
+        if (pricesWithSignal.length !== 0) {
+            let message = formatMessage(pricesWithSignal, "D1");
+
+            await bot.sendMessage(fromId, message)
+        }
+    }
+
     if (process.env.ENABLE_H4 === 'true') {
         let prices = await fetchLatestDbPricesData('H4');
 
@@ -220,6 +245,8 @@ bot.onText(/\/signal/, async (msg, match) => {
             await bot.sendMessage(fromId, message)
         }
     }
+
+    await bot.sendMessage(fromId, `Done`);
 });
 
 const sendMessageToUsers = (users, message) => users.forEach(user => bot.sendMessage(user.telegramId, message))
@@ -591,7 +618,6 @@ if (process.env.ENABLE_M15 === 'true') {
         console.log("storing H1");
         await storePairData(pairData, 'H1');
     }
-
 
     if (process.env.ENABLE_M30 === 'true') {
         console.log("storing M30");
