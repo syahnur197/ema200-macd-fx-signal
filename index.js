@@ -362,7 +362,6 @@ for (let i = 0; i < cronSetups.length; i++) {
         cronSetup.cron, // 5S before M15 candle closed
         async function () {
             const users = await fetchAllUsersData();
-            sendMessageToUsers(users, `Fetching data ${cronSetup.timeframe}!`);
 
             const oldPrices = await fetchLatestDbPricesData(cronSetup.timeframe);
 
