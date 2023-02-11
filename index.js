@@ -391,6 +391,7 @@ for (let i = 0; i < cronSetups.length; i++) {
             })
 
             if (pricesWithSignal.length === 0) {
+                sendMessageToUsers(users, `No signal for ${cronSetup.timeframe}`);
                 return;
             }
 
