@@ -384,8 +384,6 @@ for (let i = 0; i < cronSetups.length; i++) {
                     pricesWithSignal.push(price)
                 } else if (isPerfectSellSignal(price[cronSetup.timeframe])) {
                     pricesWithSignal.push(price)
-                } else {
-                    pricesWithSignal.push(price)
                 }
             })
 
