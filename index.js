@@ -3,7 +3,7 @@ import TelegramBot from 'node-telegram-bot-api';
 import {CronJob} from 'cron'
 import {PrismaClient} from "@prisma/client";
 import {scanTradingView} from "./tradingview-scanner.js";
-import {formatMessage, isNoSignal, isPerfectBuySignal, isPerfectSellSignal} from "./util.js";
+import {formatSignalMessage, isNoSignal, isPerfectBuySignal, isPerfectSellSignal} from "./util.js";
 
 dotenv.config()
 
@@ -110,7 +110,7 @@ bot.onText(/\/trend/, async (msg, match) => {
         return;
     }
 
-    const message = formatMessage(prices, "H1");
+    const message = formatSignalMessage(prices, "H1");
 
     await bot.sendMessage(fromId, message)
 });
@@ -121,126 +121,89 @@ bot.onText(/\/signal/, async (msg, match) => {
 
     await bot.sendMessage(fromId, `Fetching signal`);
 
-    if (process.env.ENABLE_D1 === 'true') {
-        let prices = await fetchLatestDbPricesData('D1');
+    const latestPrices = await fetchAllTimeframeLatestPricesData()
 
+    if (process.env.ENABLE_D1 === 'true') {
         let pricesWithSignal = [];
 
         // D1 signals
-        prices.forEach(price => {
-            if (!isNoSignal({
-                close: price.d1_close,
-                ema200: price.d1_ema200,
-                macd: price.d1_macd,
-                signal: price.d1_signal,
-                histogram: price.d1_histogram,
-            })) {
+        latestPrices.forEach(price => {
+            if (!isNoSignal(price["D1"])) {
                 pricesWithSignal.push(price)
             }
         })
 
         if (pricesWithSignal.length !== 0) {
-            let message = formatMessage(pricesWithSignal, "D1");
+            let message = formatSignalMessage(pricesWithSignal, "D1");
 
             await bot.sendMessage(fromId, message)
         }
     }
 
     if (process.env.ENABLE_H4 === 'true') {
-        let prices = await fetchLatestDbPricesData('H4');
-
         let pricesWithSignal = [];
 
         // H4 signals
-        prices.forEach(price => {
-            if (!isNoSignal({
-                close: price.h4_close,
-                ema200: price.h4_ema200,
-                macd: price.h4_macd,
-                signal: price.h4_signal,
-                histogram: price.h4_histogram,
-            })) {
+        latestPrices.forEach(price => {
+            if (!isNoSignal(price["H4"])) {
                 pricesWithSignal.push(price)
             }
         })
 
         if (pricesWithSignal.length !== 0) {
-            let message = formatMessage(pricesWithSignal, "H4");
+            let message = formatSignalMessage(pricesWithSignal, "H4");
 
             await bot.sendMessage(fromId, message)
         }
     }
 
     if (process.env.ENABLE_H1 === 'true') {
-        let prices = await fetchLatestDbPricesData('H1');
-
         let pricesWithSignal = [];
 
         // H1 signals
-        prices.forEach(price => {
-            if (!isNoSignal({
-                close: price.h1_close,
-                ema200: price.h1_ema200,
-                macd: price.h1_macd,
-                signal: price.h1_signal,
-                histogram: price.h1_histogram,
-            })) {
+        latestPrices.forEach(price => {
+            if (!isNoSignal(["H1"])) {
                 pricesWithSignal.push(price)
             }
         })
 
         if (pricesWithSignal.length !== 0) {
-            let message = formatMessage(pricesWithSignal, "H1");
+            let message = formatSignalMessage(pricesWithSignal, "H1");
 
             await bot.sendMessage(fromId, message)
         }
     }
 
     if (process.env.ENABLE_M30 === 'true') {
-        let prices = await fetchLatestDbPricesData('M30');
-
         let pricesWithSignal = [];
 
         // M30 signals
-        prices.forEach(price => {
-            if (!isNoSignal({
-                close: price.m30_close,
-                ema200: price.m30_ema200,
-                macd: price.m30_macd,
-                signal: price.m30_signal,
-                histogram: price.m30_histogram,
-            })) {
+        latestPrices.forEach(price => {
+            if (!isNoSignal(price["M30"])) {
                 pricesWithSignal.push(price)
             }
         })
 
         if (pricesWithSignal.length !== 0) {
-            let message = formatMessage(pricesWithSignal, "M30");
+            let message = formatSignalMessage(pricesWithSignal, "M30");
 
             await bot.sendMessage(fromId, message)
         }
     }
 
     if (process.env.ENABLE_M15 === 'true') {
-        let prices = await fetchLatestDbPricesData('M15');
 
         let pricesWithSignal = [];
 
         // M15 signals
-        prices.forEach(price => {
-            if (!isNoSignal({
-                close: price.m15_close,
-                ema200: price.m15_ema200,
-                macd: price.m15_macd,
-                signal: price.m15_signal,
-                histogram: price.m15_histogram,
-            })) {
+        latestPrices.forEach(price => {
+            if (!isNoSignal(price["M15"])) {
                 pricesWithSignal.push(price)
             }
         })
 
         if (pricesWithSignal.length !== 0) {
-            let message = formatMessage(pricesWithSignal, "M15");
+            let message = formatSignalMessage(pricesWithSignal, "M15");
 
             await bot.sendMessage(fromId, message)
         }
@@ -260,43 +223,23 @@ const storePairData = async (pairData, timeframe = '') => {
     let now = new Date();
 
     pairData.forEach((pairDatum) => {
-        pairDbData.push({
-            pair: pairDatum.pair,
-            m5_macd: pairDatum.m5_macd,
-            m5_signal: pairDatum.m5_signal,
-            m5_histogram: pairDatum.m5_histogram,
-            m5_ema200: pairDatum.m5_ema200,
-            m5_close: pairDatum.m5_close,
-            m15_macd: pairDatum.m15_macd,
-            m15_signal: pairDatum.m15_signal,
-            m15_histogram: pairDatum.m15_histogram,
-            m15_ema200: pairDatum.m15_ema200,
-            m15_close: pairDatum.m15_close,
-            m30_macd: pairDatum.m30_macd,
-            m30_signal: pairDatum.m30_signal,
-            m30_histogram: pairDatum.m30_histogram,
-            m30_ema200: pairDatum.m30_ema200,
-            m30_close: pairDatum.m30_close,
-            h1_macd: pairDatum.h1_macd,
-            h1_signal: pairDatum.h1_signal,
-            h1_histogram: pairDatum.h1_histogram,
-            h1_ema200: pairDatum.h1_ema200,
-            h1_close: pairDatum.h1_close,
-            h4_macd: pairDatum.h4_macd,
-            h4_signal: pairDatum.h4_signal,
-            h4_histogram: pairDatum.h4_histogram,
-            h4_ema200: pairDatum.h4_ema200,
-            h4_close: pairDatum.h4_close,
-            d1_macd: pairDatum.d1_macd,
-            d1_signal: pairDatum.d1_signal,
-            d1_histogram: pairDatum.d1_histogram,
-            d1_ema200: pairDatum.d1_ema200,
-            d1_close: pairDatum.d1_close,
-            w1_ema200: pairDatum.w1_ema200,
-            w1_close: pairDatum.w1_close,
-            timeframe: timeframe,
-            created_at: now,
-        })
+        for (const [key, value] of Object.entries(pairDatum.timeframe)) {
+
+            // if timeframe is provided, and it is not equal to the key, then we
+            // don't have to store it, because we don't want to store the other timeframe data
+            if (timeframe !== '' && timeframe !== key) continue;
+
+            pairDbData.push({
+                pair: pairDatum.pair,
+                macd: value.macd,
+                signal: value.signal,
+                histogram: value.histogram,
+                ema200: value.ema200,
+                close: value.close,
+                timeframe: key,
+                created_at: now,
+            })
+        }
     })
 
     await prisma.price.createMany({
@@ -307,60 +250,152 @@ const storePairData = async (pairData, timeframe = '') => {
 
 const fetchLatestDbPricesData = async (timeframe) => prisma.$queryRaw`SELECT * FROM Price WHERE created_at = (SELECT MAX(created_at) FROM Price WHERE timeframe = ${timeframe} LIMIT 1)`;
 
+const fetchAllTimeframeLatestPricesData = async () => {
+    let w1Prices = await fetchLatestDbPricesData('W1');
+    let d1Prices = await fetchLatestDbPricesData('D1');
+    let h4Prices = await fetchLatestDbPricesData('H4');
+    let h1Prices = await fetchLatestDbPricesData('H1');
+    let m30Prices = await fetchLatestDbPricesData('M30');
+    let m15Prices = await fetchLatestDbPricesData('M15');
+
+    return w1Prices.map(w1Price => {
+        let currentPair = w1Price.pair;
+        let d1Price = d1Prices.filter(d1Price => d1Price.pair === currentPair)[0];
+        let h4Price = h4Prices.filter(h4Price => h4Price.pair === currentPair)[0];
+        let h1Price = h1Prices.filter(h1Price => h1Price.pair === currentPair)[0];
+        let m30Price = m30Prices.filter(m30Price => m30Price.pair === currentPair)[0];
+        let m15Price = m15Prices.filter(m15Price => m15Price.pair === currentPair)[0];
+
+        return {
+            "W1": {
+                pair: currentPair,
+                macd: w1Price.macd,
+                signal: w1Price.signal,
+                histogram: w1Price.histogram,
+                close: w1Price.close,
+                ema200: w1Price.ema200,
+            },
+            "D1": {
+                pair: currentPair,
+                macd: d1Price.macd,
+                signal: d1Price.signal,
+                histogram: d1Price.histogram,
+                close: d1Price.close,
+                ema200: d1Price.ema200,
+            },
+            "H4": {
+                pair: currentPair,
+                macd: h4Price.macd,
+                signal: h4Price.signal,
+                histogram: h4Price.histogram,
+                close: h4Price.close,
+                ema200: h4Price.ema200,
+            },
+            "H1": {
+                pair: currentPair,
+                macd: h1Price.macd,
+                signal: h1Price.signal,
+                histogram: h1Price.histogram,
+                close: h1Price.close,
+                ema200: h1Price.ema200,
+            },
+            "M30": {
+                pair: currentPair,
+                macd: m30Price.macd,
+                signal: m30Price.signal,
+                histogram: m30Price.histogram,
+                close: m30Price.close,
+                ema200: m30Price.ema200,
+            },
+            "M15": {
+                pair: currentPair,
+                macd: m15Price.macd,
+                signal: m15Price.signal,
+                histogram: m15Price.histogram,
+                close: m15Price.close,
+                ema200: m15Price.ema200,
+            },
+        }
+    })
+
+}
+
 const fetchAllUsersData = async () => prisma.user.findMany()
 
-if (process.env.ENABLE_D1 === 'true') {
+const cronSetups = [
+    {
+        timeframe: "W1",
+        cron: "55 59 5 1 * *",
+        alert: false,
+    },
+    {
+        timeframe: "D1",
+        cron: "55 59 5 * * *",
+        alert: true,
+    },
+    {
+        timeframe: "H4",
+        // cron: "55 59 5,9,13,17,21,1 * * *",
+        cron: "*/20 * * * * *",
+        alert: true,
+    },
+    {
+        timeframe: "H1",
+        cron: "55 59 * * * *",
+        alert: true,
+    },
+    {
+        timeframe: "M30",
+        cron: "55 29,59 * * * *",
+        alert: false,
+    },
+    {
+        timeframe: "M15",
+        cron: "55 14,29,44,59 * * * *",
+        alert: false,
+    },
+]
+
+for (let i = 0; i < cronSetups.length; i++) {
+    let cronSetup = cronSetups[i];
+
     new CronJob(
-        '55 59 5 * * *', // 5 second before D1 candle closed
+        cronSetup.cron, // 5S before M15 candle closed
         async function () {
             const users = await fetchAllUsersData();
-            sendMessageToUsers(users, 'Fetching data!');
+            sendMessageToUsers(users, `Fetching data ${cronSetup.timeframe}!`);
 
-            const oldPrices = await fetchLatestDbPricesData('D1');
+            const oldPrices = await fetchLatestDbPricesData(cronSetup.timeframe);
 
             const pairData = await scanTradingView(pairs);
 
-            await storePairData(pairData, 'D1')
+            await storePairData(pairData, cronSetup.timeframe)
 
-            const newPrices = await fetchLatestDbPricesData('D1');
+            if (!cronSetup.alert) return;
+
+            const latestPrices = await fetchAllTimeframeLatestPricesData()
 
             let pricesWithSignal = [];
 
-            newPrices.forEach(price => {
+            latestPrices.forEach(price => {
 
                 let old_price_data = oldPrices.filter(oldPrice => oldPrice.pair === price.pair)[0]
 
-                let new_price = {
-                    close: price.d1_close,
-                    ema200: price.d1_ema200,
-                    macd: price.d1_macd,
-                    signal: price.d1_signal,
-                    histogram: price.d1_histogram,
-                }
-
-                let old_price = {
-                    close: old_price_data.d1_close,
-                    ema200: old_price_data.d1_ema200,
-                    macd: old_price_data.d1_macd,
-                    signal: old_price_data.d1_signal,
-                    histogram: old_price_data.d1_histogram,
-                }
-
                 // only push if there's perfect trade signal and macd had a crossover
-                if (isPerfectBuySignal(new_price) && old_price.macd <= 0) {
+                if (isPerfectBuySignal(price[cronSetup.timeframe])) {
                     pricesWithSignal.push(price)
-                } else if (isPerfectSellSignal(new_price) && old_price.macd >= 0) {
+                } else if (isPerfectSellSignal(price[cronSetup.timeframe])) {
+                    pricesWithSignal.push(price)
+                } else {
                     pricesWithSignal.push(price)
                 }
             })
 
-
             if (pricesWithSignal.length === 0) {
-                sendMessageToUsers(users, 'No trade signal for D1!');
                 return;
             }
 
-            const message = formatMessage(pricesWithSignal, "D1");
+            const message = formatSignalMessage(pricesWithSignal, cronSetup.timeframe);
 
             sendMessageToUsers(users, message);
         },
@@ -370,273 +405,15 @@ if (process.env.ENABLE_D1 === 'true') {
     );
 }
 
-if (process.env.ENABLE_H4 === 'true') {
-    new CronJob(
-        '55 59 5,9,13,17,21,1 * * *', // 5s before H4 candle closed
-        async function () {
-            const users = await fetchAllUsersData();
-            sendMessageToUsers(users, 'Fetching data!');
-
-            const oldPrices = await fetchLatestDbPricesData('H4');
-
-            const pairData = await scanTradingView(pairs);
-
-            await storePairData(pairData, 'H4')
-
-            const newPrices = await fetchLatestDbPricesData('H4');
-
-            let pricesWithSignal = [];
-
-            newPrices.forEach(price => {
-
-                let old_price_data = oldPrices.filter(oldPrice => oldPrice.pair === price.pair)[0]
-
-                let new_price = {
-                    close: price.h4_close,
-                    ema200: price.h4_ema200,
-                    macd: price.h4_macd,
-                    signal: price.h4_signal,
-                    histogram: price.h4_histogram,
-                }
-
-                let old_price = {
-                    close: old_price_data.h4_close,
-                    ema200: old_price_data.h4_ema200,
-                    macd: old_price_data.h4_macd,
-                    signal: old_price_data.h4_signal,
-                    histogram: old_price_data.h4_histogram,
-                }
-
-                // only push if there's perfect trade signal and macd had a crossover
-                if (isPerfectBuySignal(new_price) && old_price.macd <= 0) {
-                    pricesWithSignal.push(price)
-                } else if (isPerfectSellSignal(new_price) && old_price.macd >= 0) {
-                    pricesWithSignal.push(price)
-                }
-            })
-
-
-            if (pricesWithSignal.length === 0) {
-                sendMessageToUsers(users, 'No trade signal for H4!');
-                return;
-            }
-
-            const message = formatMessage(pricesWithSignal, "H4");
-
-            sendMessageToUsers(users, message);
-        },
-        null,
-        true,
-        'Asia/Brunei'
-    );
-}
-
-if (process.env.ENABLE_H1 === 'true') {
-    new CronJob(
-        '55 59 * * * *', // 5s before H1 candle closed
-        async function () {
-            const users = await fetchAllUsersData();
-            sendMessageToUsers(users, 'Fetching data!');
-
-            const oldPrices = await fetchLatestDbPricesData('H1');
-
-            const pairData = await scanTradingView(pairs);
-
-            await storePairData(pairData, 'H1')
-
-            const newPrices = await fetchLatestDbPricesData('H1');
-
-            let pricesWithSignal = [];
-
-            newPrices.forEach(price => {
-
-                let old_price_data = oldPrices.filter(oldPrice => oldPrice.pair === price.pair)[0]
-
-                let new_price = {
-                    close: price.h1_close,
-                    ema200: price.h1_ema200,
-                    macd: price.h1_macd,
-                    signal: price.h1_signal,
-                    histogram: price.h1_histogram,
-                }
-
-                let old_price = {
-                    close: old_price_data.h1_close,
-                    ema200: old_price_data.h1_ema200,
-                    macd: old_price_data.h1_macd,
-                    signal: old_price_data.h1_signal,
-                    histogram: old_price_data.h1_histogram,
-                }
-
-                // only push if there's perfect trade signal and macd had a crossover
-                if (isPerfectBuySignal(new_price) && old_price.macd <= 0) {
-                    pricesWithSignal.push(price)
-                } else if (isPerfectSellSignal(new_price) && old_price.macd >= 0) {
-                    pricesWithSignal.push(price)
-                }
-            })
-
-
-            if (pricesWithSignal.length === 0) {
-                sendMessageToUsers(users, 'No trade signal for H1!');
-                return;
-            }
-
-            const message = formatMessage(pricesWithSignal, "H1");
-
-            sendMessageToUsers(users, message);
-        },
-        null,
-        true,
-        'Asia/Brunei'
-    );
-}
-
-if (process.env.ENABLE_M30 === 'true') {
-    new CronJob(
-        '55 29,59 * * * *', // 5s before M30 candle closed
-        async function () {
-            const users = await fetchAllUsersData();
-            sendMessageToUsers(users, 'Fetching data!');
-
-            const oldPrices = await fetchLatestDbPricesData('M30');
-
-            const pairData = await scanTradingView(pairs);
-
-            await storePairData(pairData, 'M30')
-
-            const newPrices = await fetchLatestDbPricesData('M30');
-
-            let pricesWithSignal = [];
-
-            newPrices.forEach(price => {
-
-                let old_price_data = oldPrices.filter(oldPrice => oldPrice.pair === price.pair)[0]
-
-                let new_price = {
-                    close: price.m30_close,
-                    ema200: price.m30_ema200,
-                    macd: price.m30_macd,
-                    signal: price.m30_signal,
-                    histogram: price.m30_histogram,
-                }
-
-                let old_price = {
-                    close: old_price_data.m30_close,
-                    ema200: old_price_data.m30_ema200,
-                    macd: old_price_data.m30_macd,
-                    signal: old_price_data.m30_signal,
-                    histogram: old_price_data.m30_histogram,
-                }
-
-                // only push if there's perfect trade signal and macd had a crossover
-                if (isPerfectBuySignal(new_price) && old_price.macd <= 0) {
-                    pricesWithSignal.push(price)
-                } else if (isPerfectSellSignal(new_price) && old_price.macd >= 0) {
-                    pricesWithSignal.push(price)
-                }
-            })
-
-            if (pricesWithSignal.length === 0) {
-                return;
-            }
-
-            const message = formatMessage(pricesWithSignal, "M30");
-
-            sendMessageToUsers(users, message);
-        },
-        null,
-        true,
-        'Asia/Brunei'
-    );
-}
-
-if (process.env.ENABLE_M15 === 'true') {
-    new CronJob(
-        '55 14,29,44,59 * * * *', // 5S before M15 candle closed
-        async function () {
-            const users = await fetchAllUsersData();
-            sendMessageToUsers(users, 'Fetching data!');
-
-            const oldPrices = await fetchLatestDbPricesData('M15');
-
-            const pairData = await scanTradingView(pairs);
-
-            await storePairData(pairData, 'M15')
-
-            const newPrices = await fetchLatestDbPricesData('M15');
-
-            let pricesWithSignal = [];
-
-            newPrices.forEach(price => {
-
-                let old_price_data = oldPrices.filter(oldPrice => oldPrice.pair === price.pair)[0]
-
-                let new_price = {
-                    close: price.m15_close,
-                    ema200: price.m15_ema200,
-                    macd: price.m15_macd,
-                    signal: price.m15_signal,
-                    histogram: price.m15_histogram,
-                }
-
-                let old_price = {
-                    close: old_price_data.m15_close,
-                    ema200: old_price_data.m15_ema200,
-                    macd: old_price_data.m15_macd,
-                    signal: old_price_data.m15_signal,
-                    histogram: old_price_data.m15_histogram,
-                }
-
-                // only push if there's perfect trade signal and macd had a crossover
-                if (isPerfectBuySignal(new_price) && old_price.macd <= 0) {
-                    pricesWithSignal.push(price)
-                } else if (isPerfectSellSignal(new_price) && old_price.macd >= 0) {
-                    pricesWithSignal.push(price)
-                }
-            })
-
-            if (pricesWithSignal.length === 0) {
-                return;
-            }
-
-            const message = formatMessage(pricesWithSignal, "M15");
-
-            sendMessageToUsers(users, message);
-        },
-        null,
-        true,
-        'Asia/Brunei'
-    );
-}
 
 (async () => {
     console.log('fetching pairs and indicator data')
     const pairData = await scanTradingView(pairs);
-
-    if (process.env.ENABLE_D1 === 'true') {
-        console.log("storing D1");
-        await storePairData(pairData, 'D1');
-    }
-
-    if (process.env.ENABLE_H4 === 'true') {
-        console.log("storing H4");
-        await storePairData(pairData, 'H4');
-    }
-
-    if (process.env.ENABLE_H1 === 'true') {
-        console.log("storing H1");
-        await storePairData(pairData, 'H1');
-    }
-
-    if (process.env.ENABLE_M30 === 'true') {
-        console.log("storing M30");
-        await storePairData(pairData, 'M30');
-    }
-
-    if (process.env.ENABLE_M15 === 'true') {
-        console.log("storing M15");
-        await storePairData(pairData, 'M15');
-    }
+    await storePairData(pairData, 'W1');
+    await storePairData(pairData, 'D1');
+    await storePairData(pairData, 'H4');
+    await storePairData(pairData, 'H1');
+    await storePairData(pairData, 'M30');
+    await storePairData(pairData, 'M15');
 })()
 

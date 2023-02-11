@@ -16,42 +16,15 @@ model User {
 }
 
 model Price {
-  id            Int      @id @default(autoincrement())
-  pair          String
-  m5_macd       Decimal  @db.Decimal(11, 8)
-  m5_signal     Decimal  @db.Decimal(11, 8)
-  m5_histogram  Decimal  @db.Decimal(11, 8)
-  m5_close      Decimal  @db.Decimal(10, 5)
-  m5_ema200     Decimal  @db.Decimal(10, 5)
-  m15_macd      Decimal  @db.Decimal(11, 8)
-  m15_signal    Decimal  @db.Decimal(11, 8)
-  m15_histogram Decimal  @db.Decimal(11, 8)
-  m15_close     Decimal  @db.Decimal(10, 5)
-  m15_ema200    Decimal  @db.Decimal(10, 5)
-  m30_macd      Decimal  @db.Decimal(11, 8)
-  m30_signal    Decimal  @db.Decimal(11, 8)
-  m30_histogram Decimal  @db.Decimal(11, 8)
-  m30_close     Decimal  @db.Decimal(10, 5)
-  m30_ema200    Decimal  @db.Decimal(10, 5)
-  h1_macd       Decimal  @db.Decimal(11, 8)
-  h1_signal     Decimal  @db.Decimal(11, 8)
-  h1_histogram  Decimal  @db.Decimal(11, 8)
-  h1_close      Decimal  @db.Decimal(10, 5)
-  h1_ema200     Decimal  @db.Decimal(10, 5)
-  h4_macd       Decimal  @db.Decimal(11, 8) @default(0)
-  h4_signal     Decimal  @db.Decimal(11, 8) @default(0)
-  h4_histogram  Decimal  @db.Decimal(11, 8) @default(0)
-  h4_close      Decimal  @db.Decimal(10, 5)
-  h4_ema200     Decimal  @db.Decimal(10, 5)
-  d1_macd       Decimal  @db.Decimal(11, 8) @default(0)
-  d1_signal     Decimal  @db.Decimal(11, 8) @default(0)
-  d1_histogram  Decimal  @db.Decimal(11, 8) @default(0)
-  d1_close      Decimal  @db.Decimal(10, 5)
-  d1_ema200     Decimal  @db.Decimal(10, 5)
-  w1_close      Decimal  @db.Decimal(10, 5)
-  w1_ema200     Decimal  @db.Decimal(10, 5)
-  timeframe     String
-  created_at    DateTime
+  id         Int      @id @default(autoincrement())
+  pair       String
+  macd       Decimal  @default(0) @db.Decimal(11, 8)
+  signal     Decimal  @default(0) @db.Decimal(11, 8)
+  histogram  Decimal  @default(0) @db.Decimal(11, 8)
+  close      Decimal  @default(0) @db.Decimal(10, 5)
+  ema200     Decimal  @default(0) @db.Decimal(10, 5)
+  timeframe  String
+  created_at DateTime
 
   @@unique([pair, created_at])
 }
