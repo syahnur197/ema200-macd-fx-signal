@@ -103,14 +103,14 @@ bot.onText(/\/trend/, async (msg, match) => {
 
     await bot.sendMessage(fromId, `Fetching signal`);
 
-    const prices = await fetchLatestDbPricesData('H1');
+    const latestPrices = await fetchAllTimeframeLatestPricesData()
 
-    if (prices.length === 0) {
+    if (latestPrices.length === 0) {
         await bot.sendMessage(fromId, 'No historical price data found!');
         return;
     }
 
-    const message = formatSignalMessage(prices, "H1");
+    const message = formatSignalMessage(latestPrices, "H1");
 
     await bot.sendMessage(fromId, message)
 });
