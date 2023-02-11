@@ -3,7 +3,7 @@ import TelegramBot from 'node-telegram-bot-api';
 import {CronJob} from 'cron'
 import {PrismaClient} from "@prisma/client";
 import {scanTradingView} from "./tradingview-scanner.js";
-import {formatMessage, isNoSignal} from "./util.js";
+import {formatMessage, isNoSignal, isPerfectBuySignal, isPerfectSellSignal} from "./util.js";
 
 dotenv.config()
 
@@ -311,7 +311,7 @@ const fetchAllUsersData = async () => prisma.user.findMany()
 
 if (process.env.ENABLE_D1 === 'true') {
     new CronJob(
-        '0 1 6 * * *', // every 1st minute of the H4 candle closed
+        '55 59 5 * * *', // 5 second before D1 candle closed
         async function () {
             const users = await fetchAllUsersData();
             sendMessageToUsers(users, 'Fetching data!');
@@ -346,8 +346,10 @@ if (process.env.ENABLE_D1 === 'true') {
                     histogram: old_price_data.d1_histogram,
                 }
 
-                // only push if previous price does not generate any signal
-                if (!isNoSignal(new_price) && isNoSignal(old_price)) {
+                // only push if there's perfect trade signal and macd had a crossover
+                if (isPerfectBuySignal(new_price) && old_price.macd <= 0) {
+                    pricesWithSignal.push(price)
+                } else if (isPerfectSellSignal(new_price) && old_price.macd >= 0) {
                     pricesWithSignal.push(price)
                 }
             })
@@ -370,7 +372,7 @@ if (process.env.ENABLE_D1 === 'true') {
 
 if (process.env.ENABLE_H4 === 'true') {
     new CronJob(
-        '0 1 6,10,14,18,22,2 * * *', // every 1st minute of the H4 candle closed
+        '55 59 5,9,13,17,21,1 * * *', // 5s before H4 candle closed
         async function () {
             const users = await fetchAllUsersData();
             sendMessageToUsers(users, 'Fetching data!');
@@ -405,8 +407,10 @@ if (process.env.ENABLE_H4 === 'true') {
                     histogram: old_price_data.h4_histogram,
                 }
 
-                // only push if previous price does not generate any signal
-                if (!isNoSignal(new_price) && isNoSignal(old_price)) {
+                // only push if there's perfect trade signal and macd had a crossover
+                if (isPerfectBuySignal(new_price) && old_price.macd <= 0) {
+                    pricesWithSignal.push(price)
+                } else if (isPerfectSellSignal(new_price) && old_price.macd >= 0) {
                     pricesWithSignal.push(price)
                 }
             })
@@ -429,7 +433,7 @@ if (process.env.ENABLE_H4 === 'true') {
 
 if (process.env.ENABLE_H1 === 'true') {
     new CronJob(
-        '0 1 * * * *', // every 1st minute of the hour
+        '55 59 * * * *', // 5s before H1 candle closed
         async function () {
             const users = await fetchAllUsersData();
             sendMessageToUsers(users, 'Fetching data!');
@@ -464,8 +468,10 @@ if (process.env.ENABLE_H1 === 'true') {
                     histogram: old_price_data.h1_histogram,
                 }
 
-                // only push if previous price does not generate any signal
-                if (!isNoSignal(new_price) && isNoSignal(old_price)) {
+                // only push if there's perfect trade signal and macd had a crossover
+                if (isPerfectBuySignal(new_price) && old_price.macd <= 0) {
+                    pricesWithSignal.push(price)
+                } else if (isPerfectSellSignal(new_price) && old_price.macd >= 0) {
                     pricesWithSignal.push(price)
                 }
             })
@@ -488,7 +494,7 @@ if (process.env.ENABLE_H1 === 'true') {
 
 if (process.env.ENABLE_M30 === 'true') {
     new CronJob(
-        '0 */30 * * * *', // every 30 minute
+        '55 29,59 * * * *', // 5s before M30 candle closed
         async function () {
             const users = await fetchAllUsersData();
             sendMessageToUsers(users, 'Fetching data!');
@@ -523,8 +529,10 @@ if (process.env.ENABLE_M30 === 'true') {
                     histogram: old_price_data.m30_histogram,
                 }
 
-                // only push if previous price does not generate any signal
-                if (!isNoSignal(new_price) && isNoSignal(old_price)) {
+                // only push if there's perfect trade signal and macd had a crossover
+                if (isPerfectBuySignal(new_price) && old_price.macd <= 0) {
+                    pricesWithSignal.push(price)
+                } else if (isPerfectSellSignal(new_price) && old_price.macd >= 0) {
                     pricesWithSignal.push(price)
                 }
             })
@@ -545,7 +553,7 @@ if (process.env.ENABLE_M30 === 'true') {
 
 if (process.env.ENABLE_M15 === 'true') {
     new CronJob(
-        '0 */15 * * * *', // every 15 minute
+        '55 14,29,44,59 * * * *', // 5S before M15 candle closed
         async function () {
             const users = await fetchAllUsersData();
             sendMessageToUsers(users, 'Fetching data!');
@@ -580,8 +588,10 @@ if (process.env.ENABLE_M15 === 'true') {
                     histogram: old_price_data.m15_histogram,
                 }
 
-                // only push if previous price does not generate any signal
-                if (!isNoSignal(new_price) && isNoSignal(old_price)) {
+                // only push if there's perfect trade signal and macd had a crossover
+                if (isPerfectBuySignal(new_price) && old_price.macd <= 0) {
+                    pricesWithSignal.push(price)
+                } else if (isPerfectSellSignal(new_price) && old_price.macd >= 0) {
                     pricesWithSignal.push(price)
                 }
             })
