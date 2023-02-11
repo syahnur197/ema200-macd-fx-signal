@@ -335,8 +335,7 @@ const cronSetups = [
     },
     {
         timeframe: "H4",
-        // cron: "55 59 5,9,13,17,21,1 * * *",
-        cron: "*/20 * * * * *",
+        cron: "55 59 5,9,13,17,21,1 * * *",
         alert: true,
     },
     {
