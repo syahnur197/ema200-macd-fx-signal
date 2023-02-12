@@ -85,6 +85,27 @@ const telegramBotToken = process.env.BOT_TOKEN; // Telegram bot
 
 const bot = new TelegramBot(telegramBotToken, {polling: true});
 
+const commands = [
+    {
+        command: 'start',
+        description: 'Start the bot and subscribe to the signal alert',
+    },
+    {
+        command: 'quit',
+        description: 'Unsubscribe to the signal alert',
+    },
+    {
+        command: 'trend',
+        description: 'Request for the latest trend',
+    },
+    {
+        command: 'signal',
+        description: 'Request for the latest signal',
+    },
+];
+
+bot.setMyCommands(commands)
+
 // Matches "/start"
 bot.onText(/\/start/, async (msg, match) => {
     let fromId = msg.from.id;
@@ -95,7 +116,7 @@ bot.onText(/\/start/, async (msg, match) => {
     });
 
     if (userCount > 0) {
-        await bot.sendMessage(fromId, `${name}, you already joined the signal group!`);
+        await bot.sendMessage(fromId, `${name}, you already subscribed to the signal!`);
         return;
     }
 
@@ -108,7 +129,7 @@ bot.onText(/\/start/, async (msg, match) => {
     })
 
     // send back the matched "whatever" to the chat
-    await bot.sendMessage(fromId, `Welcome ${name}, thank you for joining the signal group`);
+    await bot.sendMessage(fromId, `Welcome ${name}, thank you for subscribing to the signal! You will receive trading signals periodically.`);
 });
 
 bot.onText(/\/quit/, async (msg, match) => {
@@ -120,7 +141,7 @@ bot.onText(/\/quit/, async (msg, match) => {
     });
 
     if (userCount < 1) {
-        await bot.sendMessage(fromId, `${name}, you already quit the signal group!`);
+        await bot.sendMessage(fromId, `${name}, you already unsubscribed from the signal alert!`);
         return;
     }
 
@@ -128,7 +149,7 @@ bot.onText(/\/quit/, async (msg, match) => {
         where: {telegramId: fromId},
     })
 
-    await bot.sendMessage(fromId, `We're sad to see you leave this signal group ${name}, see you in the future!`);
+    await bot.sendMessage(fromId, `You have unsubscribed from the signal alert!`);
 });
 
 // Send all pair market info
