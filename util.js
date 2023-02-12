@@ -40,11 +40,11 @@ export const formatSignalMessage = (prices, timeframe) => {
 
     prices.forEach(price => {
         if (isPerfectBuySignal(price[timeframe])) {
-            message += `${price[timeframe].pair} 📈 PERFECT BUY Signal ${timeframe} \n`;
+            message += `${price[timeframe].pair} 📈 BUY Signal ${timeframe} \n`;
             message += 'MACD Negative \n';
             message += 'Above EMA 200 \n';
         } else if (isPerfectSellSignal(price[timeframe])) {
-            message += `${price[timeframe].pair} 📉 PERFECT SELL Signal ${timeframe} \n`;
+            message += `${price[timeframe].pair} 📉 SELL Signal ${timeframe} \n`;
             message += 'MACD Positive \n';
             message += 'Below EMA 200 \n';
         } else {
