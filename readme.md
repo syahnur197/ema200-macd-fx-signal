@@ -18,8 +18,6 @@ You can get it from Telegram's Botfather
 - run npm install
 - $ cp .env.example .env
 - fill in the BOT_TOKEN
-- use `0 * * * * *` for the cron expression if you want to be alerted every minute.
-- set ENVIRONMENT to development if you want to check the alert in console, otherwise set to production if you want it to only message you via Telegram.
 - $ node index.js
 - send `/start` to your Telegram bot, and it will alert you for trade signal every minute.
 

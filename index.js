@@ -6,8 +6,8 @@ import { scanTradingView } from "./tradingview-scanner.js";
 import {
   formatSignalMessage,
   isNoSignal,
-  isPerfectBuySignal,
-  isPerfectSellSignal,
+  isBuySignal,
+  isSellSignal,
 } from "./util.js";
 
 dotenv.config();
@@ -50,42 +50,45 @@ const pairs = [
   "SGDJPY",
 ];
 
+// all the alerts will fetch market data 5 seconds before respective
+// timeframe candle closed because it will fetch the new candle
+// value if we set exactly when the candle closed
 const cronSetups = [
   {
     timeframe: "W1",
     cron: "55 59 5 1 * *",
-    alert: false,
+    alert: process.env.ENABLE_W1 === "true",
   },
   {
     timeframe: "D1",
     cron: "55 59 5 * * *",
-    alert: true,
+    alert: process.env.ENABLE_D1 === "true",
   },
   {
     timeframe: "H4",
     cron: "55 59 5,9,13,17,21,1 * * *",
-    alert: true,
+    alert: process.env.ENABLE_H4 === "true",
   },
   {
     timeframe: "H1",
     cron: "55 59 * * * *",
-    alert: true,
+    alert: process.env.ENABLE_H1 === "true",
   },
   {
     timeframe: "M30",
     cron: "55 29,59 * * * *",
-    alert: false,
+    alert: process.env.ENABLE_M30 === "true",
   },
   {
     timeframe: "M15",
     cron: "55 14,29,44,59 * * * *",
-    alert: false,
+    alert: process.env.ENABLE_M15 === "true",
   },
 ];
 
 const prisma = new PrismaClient();
 
-const telegramBotToken = process.env.BOT_TOKEN; // Telegram bot
+const telegramBotToken = process.env.BOT_TOKEN;
 
 const bot = new TelegramBot(telegramBotToken, { polling: true });
 
@@ -331,10 +334,11 @@ for (let i = 0; i < cronSetups.length; i++) {
   let cronSetup = cronSetups[i];
 
   new CronJob(
-    cronSetup.cron, // 5S before M15 candle closed
+    cronSetup.cron,
     async function () {
       const users = await fetchAllUsersData();
 
+      // retrieve old data to determine if there's a cross
       const oldPrices = await fetchLatestDbPricesData(cronSetup.timeframe);
 
       const pairData = await scanTradingView(pairs);
@@ -352,10 +356,16 @@ for (let i = 0; i < cronSetups.length; i++) {
           (oldPrice) => oldPrice.pair === price.pair
         )[0];
 
-        // only push if there's perfect trade signal and macd had a crossover
-        if (isPerfectBuySignal(price[cronSetup.timeframe])) {
-          pricesWithSignal.push(price);
-        } else if (isPerfectSellSignal(price[cronSetup.timeframe])) {
+        // only push if there's perfect trade signal and macd had a cross with signal line
+        const buyCondition =
+          isBuySignal(price[cronSetup.timeframe]) &&
+          old_price_data.histogram <= 0;
+
+        const sellCondition =
+          isSellSignal(price[cronSetup.timeframe]) &&
+          old_price_data.histogram >= 0;
+
+        if (buyCondition || sellCondition) {
           pricesWithSignal.push(price);
         }
       });
@@ -374,7 +384,7 @@ for (let i = 0; i < cronSetups.length; i++) {
     },
     null,
     true,
-    "Asia/Brunei"
+    process.env.TIMEZONE
   );
 }
 

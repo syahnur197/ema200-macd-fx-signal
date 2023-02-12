@@ -1,4 +1,4 @@
-export const isPerfectBuySignal = (price) => {
+export const isBuySignal = (price) => {
   // Buy Rule
   // Price must close above EMA 200
   // Histogram must be positive
@@ -20,7 +20,7 @@ export const isPerfectBuySignal = (price) => {
   );
 };
 
-export const isPerfectSellSignal = (price) => {
+export const isSellSignal = (price) => {
   // Sell Rule
   // Price must close below EMA 200
   // Histogram must be negative
@@ -43,18 +43,18 @@ export const isPerfectSellSignal = (price) => {
 };
 
 export const isNoSignal = (price) => {
-  return !isPerfectBuySignal(price) && !isPerfectSellSignal(price);
+  return !isBuySignal(price) && !isSellSignal(price);
 };
 
 export const formatSignalMessage = (prices, timeframe) => {
   let message = "";
 
   prices.forEach((price) => {
-    if (isPerfectBuySignal(price[timeframe])) {
+    if (isBuySignal(price[timeframe])) {
       message += `${price[timeframe].pair} 📈 BUY Signal ${timeframe} \n`;
       message += "MACD Negative \n";
       message += "Above EMA 200 \n";
-    } else if (isPerfectSellSignal(price[timeframe])) {
+    } else if (isSellSignal(price[timeframe])) {
       message += `${price[timeframe].pair} 📉 SELL Signal ${timeframe} \n`;
       message += "MACD Positive \n";
       message += "Below EMA 200 \n";
