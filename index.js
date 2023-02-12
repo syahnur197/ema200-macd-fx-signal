@@ -45,6 +45,40 @@ const pairs = [
     'SGDJPY',
 ];
 
+
+const cronSetups = [
+    {
+        timeframe: "W1",
+        cron: "55 59 5 1 * *",
+        alert: false,
+    },
+    {
+        timeframe: "D1",
+        cron: "55 59 5 * * *",
+        alert: true,
+    },
+    {
+        timeframe: "H4",
+        cron: "55 59 5,9,13,17,21,1 * * *",
+        alert: true,
+    },
+    {
+        timeframe: "H1",
+        cron: "55 59 * * * *",
+        alert: true,
+    },
+    {
+        timeframe: "M30",
+        cron: "55 29,59 * * * *",
+        alert: false,
+    },
+    {
+        timeframe: "M15",
+        cron: "55 14,29,44,59 * * * *",
+        alert: false,
+    },
+]
+
 const prisma = new PrismaClient()
 
 const telegramBotToken = process.env.BOT_TOKEN; // Telegram bot
@@ -123,87 +157,21 @@ bot.onText(/\/signal/, async (msg, match) => {
 
     const latestPrices = await fetchAllTimeframeLatestPricesData()
 
-    if (process.env.ENABLE_D1 === 'true') {
+    for (let i = 0; i < cronSetups.length; i++) {
+        const cronSetup = cronSetups[i];
+
+        if (!cronSetup.alert) continue;
+
         let pricesWithSignal = [];
 
-        // D1 signals
         latestPrices.forEach(price => {
-            if (!isNoSignal(price["D1"])) {
+            if (!isNoSignal(price[cronSetup.timeframe])) {
                 pricesWithSignal.push(price)
             }
         })
 
         if (pricesWithSignal.length !== 0) {
-            let message = formatSignalMessage(pricesWithSignal, "D1");
-
-            await bot.sendMessage(fromId, message)
-        }
-    }
-
-    if (process.env.ENABLE_H4 === 'true') {
-        let pricesWithSignal = [];
-
-        // H4 signals
-        latestPrices.forEach(price => {
-            if (!isNoSignal(price["H4"])) {
-                pricesWithSignal.push(price)
-            }
-        })
-
-        if (pricesWithSignal.length !== 0) {
-            let message = formatSignalMessage(pricesWithSignal, "H4");
-
-            await bot.sendMessage(fromId, message)
-        }
-    }
-
-    if (process.env.ENABLE_H1 === 'true') {
-        let pricesWithSignal = [];
-
-        // H1 signals
-        latestPrices.forEach(price => {
-            if (!isNoSignal(["H1"])) {
-                pricesWithSignal.push(price)
-            }
-        })
-
-        if (pricesWithSignal.length !== 0) {
-            let message = formatSignalMessage(pricesWithSignal, "H1");
-
-            await bot.sendMessage(fromId, message)
-        }
-    }
-
-    if (process.env.ENABLE_M30 === 'true') {
-        let pricesWithSignal = [];
-
-        // M30 signals
-        latestPrices.forEach(price => {
-            if (!isNoSignal(price["M30"])) {
-                pricesWithSignal.push(price)
-            }
-        })
-
-        if (pricesWithSignal.length !== 0) {
-            let message = formatSignalMessage(pricesWithSignal, "M30");
-
-            await bot.sendMessage(fromId, message)
-        }
-    }
-
-    if (process.env.ENABLE_M15 === 'true') {
-
-        let pricesWithSignal = [];
-
-        // M15 signals
-        latestPrices.forEach(price => {
-            if (!isNoSignal(price["M15"])) {
-                pricesWithSignal.push(price)
-            }
-        })
-
-        if (pricesWithSignal.length !== 0) {
-            let message = formatSignalMessage(pricesWithSignal, "M15");
+            let message = formatSignalMessage(pricesWithSignal, cronSetup.timeframe);
 
             await bot.sendMessage(fromId, message)
         }
@@ -321,39 +289,6 @@ const fetchAllTimeframeLatestPricesData = async () => {
 }
 
 const fetchAllUsersData = async () => prisma.user.findMany()
-
-const cronSetups = [
-    {
-        timeframe: "W1",
-        cron: "55 59 5 1 * *",
-        alert: false,
-    },
-    {
-        timeframe: "D1",
-        cron: "55 59 5 * * *",
-        alert: true,
-    },
-    {
-        timeframe: "H4",
-        cron: "55 59 5,9,13,17,21,1 * * *",
-        alert: true,
-    },
-    {
-        timeframe: "H1",
-        cron: "55 59 * * * *",
-        alert: true,
-    },
-    {
-        timeframe: "M30",
-        cron: "55 29,59 * * * *",
-        alert: false,
-    },
-    {
-        timeframe: "M15",
-        cron: "55 14,29,44,59 * * * *",
-        alert: false,
-    },
-]
 
 for (let i = 0; i < cronSetups.length; i++) {
     let cronSetup = cronSetups[i];
