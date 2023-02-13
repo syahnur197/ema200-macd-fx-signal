@@ -341,19 +341,22 @@ for (let i = 0; i < cronSetups.length; i++) {
       // retrieve old data to determine if there's a cross
       const oldPrices = await fetchLatestDbPricesData(cronSetup.timeframe);
 
+      console.log(`fetching ${cronSetup.timeframe}`);
       const pairData = await scanTradingView(pairs);
 
+      console.log(`storing ${cronSetup.timeframe}`);
       await storePairData(pairData, cronSetup.timeframe);
 
       if (!cronSetup.alert) return;
 
+      console.log(`fetch all ${cronSetup.timeframe}`);
       const latestPrices = await fetchAllTimeframeLatestPricesData();
 
       let pricesWithSignal = [];
 
       latestPrices.forEach((price) => {
         let old_price_data = oldPrices.filter(
-          (oldPrice) => oldPrice.pair === price.pair
+          (oldPrice) => oldPrice.pair === price[cronSetup.timeframe].pair
         )[0];
 
         // only push if there's perfect trade signal and macd had a cross with signal line
