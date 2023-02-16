@@ -6,10 +6,10 @@ export const isBuySignal = (price) => {
   // both macd and signal must be negative
 
   let aboveEma200 = price.close > price.ema200;
-  let positiveHistogram = price.histogram > 0;
-  let macdHigherThanSignal = price.macd > price.signal;
-  let negativeMacd = price.macd < 0;
-  let negativeSignal = price.signal < 0;
+  let positiveHistogram = price.macd_histogram >= 0;
+  let macdHigherThanSignal = price.macd > price.macd_signal;
+  let negativeMacd = price.macd <= 0;
+  let negativeSignal = price.macd_signal <= 0;
 
   return (
     aboveEma200 &&
@@ -28,10 +28,10 @@ export const isSellSignal = (price) => {
   // both macd and signal must be positive
 
   let belowEma200 = price.close < price.ema200;
-  let negativeHistogram = price.histogram < 0;
-  let macdLowerThanSignal = price.macd < price.signal;
-  let positiveMacd = price.macd > 0;
-  let positiveSignal = price.signal > 0;
+  let negativeHistogram = price.macd_histogram <= 0;
+  let macdLowerThanSignal = price.macd < price.macd_signal;
+  let positiveMacd = price.macd >= 0;
+  let positiveSignal = price.macd_signal >= 0;
 
   return (
     belowEma200 &&

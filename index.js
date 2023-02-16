@@ -236,8 +236,8 @@ const storePairData = async (pairData, timeframe = "") => {
       pairDbData.push({
         pair: pairDatum.pair,
         macd: value.macd,
-        signal: value.signal,
-        histogram: value.histogram,
+        macd_signal: value.macd_signal,
+        macd_histogram: value.macd_histogram,
         ema200: value.ema200,
         close: value.close,
         timeframe: key,
@@ -253,7 +253,7 @@ const storePairData = async (pairData, timeframe = "") => {
 };
 
 const fetchLatestDbPricesData = async (timeframe) =>
-  prisma.$queryRaw`SELECT * FROM Price WHERE created_at = (SELECT MAX(created_at) FROM Price WHERE timeframe = ${timeframe} LIMIT 1)`;
+  prisma.$queryRaw`SELECT * FROM Price WHERE id IN (SELECT MAX(id) FROM Price WHERE timeframe = ${timeframe} GROUP BY pair)`;
 
 const fetchAllTimeframeLatestPricesData = async () => {
   let w1Prices = await fetchLatestDbPricesData("W1");
@@ -278,51 +278,51 @@ const fetchAllTimeframeLatestPricesData = async () => {
     return {
       W1: {
         pair: currentPair,
-        macd: w1Price.macd,
-        signal: w1Price.signal,
-        histogram: w1Price.histogram,
-        close: w1Price.close,
-        ema200: w1Price.ema200,
+        macd: w1Price.macd.toNumber(),
+        macd_signal: w1Price.macd_signal.toNumber(),
+        macd_histogram: w1Price.macd_histogram.toNumber(),
+        close: w1Price.close.toNumber(),
+        ema200: w1Price.ema200.toNumber(),
       },
       D1: {
         pair: currentPair,
-        macd: d1Price.macd,
-        signal: d1Price.signal,
-        histogram: d1Price.histogram,
-        close: d1Price.close,
-        ema200: d1Price.ema200,
+        macd: d1Price.macd.toNumber(),
+        macd_signal: d1Price.macd_signal.toNumber(),
+        macd_histogram: d1Price.macd_histogram.toNumber(),
+        close: d1Price.close.toNumber(),
+        ema200: d1Price.ema200.toNumber(),
       },
       H4: {
         pair: currentPair,
-        macd: h4Price.macd,
-        signal: h4Price.signal,
-        histogram: h4Price.histogram,
-        close: h4Price.close,
-        ema200: h4Price.ema200,
+        macd: h4Price.macd.toNumber(),
+        macd_signal: h4Price.macd_signal.toNumber(),
+        macd_histogram: h4Price.macd_histogram.toNumber(),
+        close: h4Price.close.toNumber(),
+        ema200: h4Price.ema200.toNumber(),
       },
       H1: {
         pair: currentPair,
-        macd: h1Price.macd,
-        signal: h1Price.signal,
-        histogram: h1Price.histogram,
-        close: h1Price.close,
-        ema200: h1Price.ema200,
+        macd: h1Price.macd.toNumber(),
+        macd_signal: h1Price.macd_signal.toNumber(),
+        macd_histogram: h1Price.macd_histogram.toNumber(),
+        close: h1Price.close.toNumber(),
+        ema200: h1Price.ema200.toNumber(),
       },
       M30: {
         pair: currentPair,
-        macd: m30Price.macd,
-        signal: m30Price.signal,
-        histogram: m30Price.histogram,
-        close: m30Price.close,
-        ema200: m30Price.ema200,
+        macd: m30Price.macd.toNumber(),
+        macd_signal: m30Price.macd_signal.toNumber(),
+        macd_histogram: m30Price.macd_histogram.toNumber(),
+        close: m30Price.close.toNumber(),
+        ema200: m30Price.ema200.toNumber(),
       },
       M15: {
         pair: currentPair,
-        macd: m15Price.macd,
-        signal: m15Price.signal,
-        histogram: m15Price.histogram,
-        close: m15Price.close,
-        ema200: m15Price.ema200,
+        macd: m15Price.macd.toNumber(),
+        macd_signal: m15Price.macd_signal.toNumber(),
+        macd_histogram: m15Price.macd_histogram.toNumber(),
+        close: m15Price.close.toNumber(),
+        ema200: m15Price.ema200.toNumber(),
       },
     };
   });
@@ -362,11 +362,11 @@ for (let i = 0; i < cronSetups.length; i++) {
         // only push if there's perfect trade signal and macd had a cross with signal line
         const buyCondition =
           isBuySignal(price[cronSetup.timeframe]) &&
-          old_price_data.histogram <= 0;
+          old_price_data.macd_histogram <= 0;
 
         const sellCondition =
           isSellSignal(price[cronSetup.timeframe]) &&
-          old_price_data.histogram >= 0;
+          old_price_data.macd_histogram >= 0;
 
         if (buyCondition || sellCondition) {
           pricesWithSignal.push(price);

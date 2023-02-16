@@ -6,8 +6,8 @@ test("price is buy signal", () => {
       close: 1,
       ema200: 0,
       macd: -1,
-      signal: -2,
-      histogram: 1,
+      macd_signal: -2,
+      macd_histogram: 1,
     })
   ).toBe(true);
 });
@@ -18,8 +18,8 @@ test("price is sell signal", () => {
       close: -1,
       ema200: 0,
       macd: 1,
-      signal: 2,
-      histogram: -1,
+      macd_signal: 2,
+      macd_histogram: -1,
     })
   ).toBe(true);
 });
@@ -30,8 +30,8 @@ test("price has no signal", () => {
       close: -1,
       ema200: 0,
       macd: 1,
-      signal: 2,
-      histogram: 1,
+      macd_signal: 2,
+      macd_histogram: 1,
     })
   ).toBe(true);
 });

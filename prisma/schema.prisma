@@ -16,15 +16,15 @@ model User {
 }
 
 model Price {
-  id         Int      @id @default(autoincrement())
-  pair       String
-  macd       Decimal  @default(0) @db.Decimal(11, 8)
-  signal     Decimal  @default(0) @db.Decimal(11, 8)
-  histogram  Decimal  @default(0) @db.Decimal(11, 8)
-  close      Decimal  @default(0) @db.Decimal(10, 5)
-  ema200     Decimal  @default(0) @db.Decimal(10, 5)
-  timeframe  String
-  created_at DateTime
+  id             Int      @id @default(autoincrement())
+  pair           String
+  macd           Decimal  @default(0) @db.Decimal(11, 8)
+  macd_signal    Decimal  @default(0) @db.Decimal(11, 8)
+  macd_histogram Decimal  @default(0) @db.Decimal(11, 8)
+  close          Decimal  @default(0) @db.Decimal(10, 5)
+  ema200         Decimal  @default(0) @db.Decimal(10, 5)
+  timeframe      String
+  created_at     DateTime
 
   @@unique([pair, created_at])
 }
